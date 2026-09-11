@@ -1,0 +1,10 @@
+package-as: HunterPetStatus
+
+enable-nolib-creation: no
+
+ignore:
+  - tests
+  - .github
+  - .editorconfig
+  - .luacheckrc
+  - CONTRIBUTING.md
