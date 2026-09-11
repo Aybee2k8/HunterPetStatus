@@ -19,10 +19,25 @@ Two things still need confirming on a live client, and `/pw diag` reports both:
 
 ## Install
 
-Copy the repository into a folder named **`PetWatch`** under
-`World of Warcraft/_retail_/Interface/AddOns/`, or install a packaged release.
-The folder name has to match `PetWatch.toc`, so a plain `git clone` needs
-renaming (packaged releases are already named correctly).
+Copy the **`PetWatch`** folder from this repository into
+`World of Warcraft/_retail_/Interface/AddOns/`, so that
+`Interface/AddOns/PetWatch/PetWatch.toc` exists. Then restart the game — the
+addon list is only read at startup, so a `/reload` will not pick up a newly
+added addon.
+
+Copy the inner `PetWatch` folder, not the repository folder. The client matches
+a folder against the `.toc` inside it by name: a folder called anything else
+(`HunterPetStatus`, or the `-main` suffix a ZIP download adds) is skipped
+silently and the addon never appears in the list at all — not even as out of
+date.
+
+## Layout
+
+| Path | Contains |
+| --- | --- |
+| `PetWatch/` | The addon itself — this is what gets installed |
+| `tests/` | Test harnesses, run outside the game |
+| `.github/` | CI and release packaging |
 
 ## Settings
 
@@ -49,7 +64,9 @@ after a patch, and the thing to paste into a bug report. It prints the build,
 the resolved spec, and every API and event the addon probed, so a breakage is
 visible without guessing.
 
-## Layout
+## Source files
+
+Everything below lives in `PetWatch/`.
 
 | File | Contains |
 | --- | --- |
@@ -110,10 +127,15 @@ lua5.4 tests/options_spec.lua   # panel construction and wiring, stubbed frames
 luacheck .                      # lint
 ```
 
-All three run in CI on every push. Tagging `v*` builds a package via the
-[BigWigs packager][packager] (as `PetWatch`, whatever the repository is called);
-CurseForge and Wago uploads happen only when `CF_API_KEY` / `WAGO_API_TOKEN`
-are configured.
+All three run in CI on every push, along with a check that
+`PetWatch/PetWatch.toc` still matches its folder name.
+
+Tagging `v*` builds a package via the [BigWigs packager][packager] — as
+`PetWatch`, whatever the repository is called; CurseForge and Wago uploads
+happen only when `CF_API_KEY` / `WAGO_API_TOKEN` are configured. No release has
+been built yet, so the `move-folders` mapping in `.pkgmeta` that flattens the
+subfolder layout is untested; check the first release's zip has
+`PetWatch/PetWatch.toc` at its root and not `PetWatch/PetWatch/PetWatch.toc`.
 
 The harnesses stub the client, so they can prove the state machine and the
 panel's wiring but not the client's behaviour. A genuine secret value is a
