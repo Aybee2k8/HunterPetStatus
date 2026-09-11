@@ -93,6 +93,9 @@ The slash commands remain as shortcuts:
 | `/pw scale 1.0` | Resize it (0.3 – 4.0) |
 | `/pw display icon\|text\|both` | Choose what is shown |
 | `/pw alert on\|off` | Flash a warning in the middle of the screen |
+| `/pw alertfont default\|arial\|skurri\|morpheus` | Warning font |
+| `/pw alertsize 32` | Warning text size (12 – 72) |
+| `/pw alertmove` | Reposition the warning by dragging |
 | `/pw mounted show\|hide` | Behaviour while mounted |
 | `/pw on` / `/pw off` | Enable or disable |
 | `/pw reset` | Restore defaults |
@@ -159,6 +162,17 @@ error at construction — which for a settings panel would take the addon down
 with it. The panel registers with the client's settings UI when that API is
 available and falls back to its own window when it is not; both hosts show the
 same content frame.
+
+**The alert's look is configurable, its fonts are the client's own.** Font,
+size, colour and position are all settings. The four fonts offered are files
+the client already ships, so the addon stays dependency-free and needs no
+bundled typeface — and "default" means whatever the font object came with,
+captured at creation, so locales that do not use a Latin font get theirs
+without a special case. A font the client refuses falls back to the default and
+says so, rather than leaving someone with invisible text.
+
+Colour is three sliders rather than the client's colour picker: that API has
+been rewritten more than once, and three sliders cannot break.
 
 **The alert fires on the change, not on the state.** Resolution runs on every
 pet event, so flashing whenever the state *is* dead would flash continuously for

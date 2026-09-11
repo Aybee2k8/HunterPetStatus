@@ -9,6 +9,14 @@ workflow refuses a tag that disagrees with it.
 
 ## 0.2.0 — unreleased
 
+- **The alert's appearance is configurable**: font, size, colour and position,
+  all from the settings panel. "Move alert" shows it permanently so it can be
+  dragged, and closes the panel so it is not hidden behind it.
+- Fonts are the client's own (Default, Arial, Skurri, Morpheus) — no bundled
+  typeface, and "Default" follows the client's locale. A font the client
+  refuses falls back and says so.
+- Colour is three sliders rather than the client's colour picker, whose API has
+  been rewritten more than once.
 - **Centre-screen alert.** A large "Pet Missing!" or "Pet Dead!" flashes above
   the middle of the screen and fades, so a pet lost mid-fight is not something
   you find out about two minutes later. On by default; turn it off in the

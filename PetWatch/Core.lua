@@ -11,12 +11,17 @@ local DEFAULTS = {
   displayMode = 'both', -- 'icon' | 'text' | 'both'
   hideMounted = true,
   alert = true,
+  alertFont = 'default',
+  alertSize = 32,
+  alertColor = { 1, 0.3, 0.3 },
+  alertPoint = { 'CENTER', 'UIParent', 'CENTER', 0, 160 },
   point = { 'CENTER', 'UIParent', 'CENTER', 0, 0 },
 }
 
 local db
 local current = state.UNKNOWN
 local unlocked = false
+local alertUnlocked = false
 local inSettingsUI = false
 
 local function say(message)
@@ -184,6 +189,44 @@ function settings.SetAlert(value)
   refresh()
 end
 
+local function applyAlertStyle()
+  local applied = display.ApplyAlertStyle(db.alertFont, db.alertSize, db.alertColor)
+
+  -- A refused font leaves readable text in the default face rather than
+  -- nothing, but saying so beats letting someone wonder why their choice did
+  -- not take.
+  if not applied and db.alertFont ~= 'default' then
+    say(('this client refused the "%s" font; using the default.'):format(db.alertFont))
+    db.alertFont = 'default'
+  end
+end
+
+function settings.SetAlertFont(font)
+  db.alertFont = font
+  applyAlertStyle()
+end
+
+function settings.SetAlertSize(size)
+  db.alertSize = size
+  applyAlertStyle()
+end
+
+function settings.SetAlertColor(r, g, b)
+  db.alertColor = { r, g, b }
+  applyAlertStyle()
+end
+
+function settings.SetAlertUnlocked(value)
+  alertUnlocked = value and true or false
+  display.SetAlertUnlocked(alertUnlocked, function(point)
+    db.alertPoint = point
+  end)
+end
+
+function settings.ToggleAlertUnlocked()
+  settings.SetAlertUnlocked(not alertUnlocked)
+end
+
 function settings.SetDisplayMode(mode)
   db.displayMode = mode
   refresh()
@@ -254,12 +297,21 @@ function settings.Reset()
   db.hideMounted = DEFAULTS.hideMounted
   db.enabled = DEFAULTS.enabled
 
+  db.alert = DEFAULTS.alert
+  db.alertFont = DEFAULTS.alertFont
+  db.alertSize = DEFAULTS.alertSize
+  db.alertColor = { unpack(DEFAULTS.alertColor) }
+  db.alertPoint = { unpack(DEFAULTS.alertPoint) }
+
   preview = nil
   previewFromUnlock = false
 
   settings.SetUnlocked(false)
+  settings.SetAlertUnlocked(false)
   display.ApplyScale(db.scale)
   display.ApplyPosition(db.point)
+  display.ApplyAlertPosition(db.alertPoint)
+  display.ApplyAlertStyle(db.alertFont, db.alertSize, db.alertColor)
   refresh()
 end
 
@@ -269,6 +321,10 @@ function settings.Snapshot()
     enabled = db.enabled,
     hideMounted = db.hideMounted,
     alert = db.alert,
+    alertFont = db.alertFont,
+    alertSize = db.alertSize,
+    alertColor = db.alertColor,
+    alertUnlocked = alertUnlocked,
     displayMode = db.displayMode,
     scale = db.scale,
     unlocked = unlocked,
@@ -370,6 +426,8 @@ listener:SetScript('OnEvent', function(_, event, arg1)
       display.CreateAlert()
       display.ApplyScale(db.scale)
       display.ApplyPosition(db.point)
+      display.ApplyAlertPosition(db.alertPoint)
+      display.ApplyAlertStyle(db.alertFont, db.alertSize, db.alertColor)
     end)
 
     -- The first resolution after login should not flash: it reports a state
@@ -400,6 +458,7 @@ listener:SetScript('OnEvent', function(_, event, arg1)
     preview = nil
     previewFromUnlock = false
     settings.SetUnlocked(false)
+    settings.SetAlertUnlocked(false)
     alertsQuietUntil = GetTime() + 5
   end
 
@@ -504,6 +563,39 @@ function commands.alert(argument)
   say('centre-screen alert: ' .. argument)
 end
 
+local ALERT_FONTS = { default = true, arial = true, skurri = true, morpheus = true }
+
+function commands.alertfont(argument)
+  if not ALERT_FONTS[argument] then
+    say(('alert font is %s. usage: /pw alertfont default|arial|skurri|morpheus'):format(db.alertFont))
+    return
+  end
+
+  settings.SetAlertFont(argument)
+  refreshPanel()
+  say('alert font: ' .. argument)
+end
+
+function commands.alertsize(argument)
+  local value = tonumber(argument)
+
+  if not value or value < 12 or value > 72 then
+    say(('alert size is %d. usage: /pw alertsize 32  (12 - 72)'):format(db.alertSize))
+    return
+  end
+
+  settings.SetAlertSize(value)
+  refreshPanel()
+  say(('alert size: %d'):format(value))
+end
+
+function commands.alertmove()
+  settings.ToggleAlertUnlocked()
+  refreshPanel()
+  say(alertUnlocked and 'alert unlocked - drag it, then /pw alertmove again.'
+    or 'alert locked.')
+end
+
 function commands.mounted(argument)
   if argument ~= 'show' and argument ~= 'hide' then
     say(('while mounted: %s. usage: /pw mounted show|hide'):format(db.hideMounted and 'hide' or 'show'))
@@ -527,6 +619,9 @@ function commands.help()
   print('  /pw scale 1.0              - resize it')
   print('  /pw display icon|text|both - what to show')
   print('  /pw alert on|off           - flash a warning in the middle of the screen')
+  print('  /pw alertfont default|arial|skurri|morpheus')
+  print('  /pw alertsize 32           - warning text size (12 - 72)')
+  print('  /pw alertmove              - reposition the warning')
   print('  /pw mounted show|hide      - behaviour while mounted')
   print('  /pw on | off               - enable or disable')
   print('  /pw reset                  - restore defaults')
