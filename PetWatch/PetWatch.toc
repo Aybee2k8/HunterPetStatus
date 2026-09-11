@@ -12,6 +12,10 @@
 # the release workflow refuses a tag that does not match.
 ## Version: 0.2.0
 ## SavedVariables: PetWatchDB
+# The CurseForge project ID. The release workflow's packager reads it from here
+# to know where to upload; without it the packager still builds the zip and
+# attaches it to the GitHub release, but skips the upload silently.
+## X-Curse-Project-ID: 1690924
 ## IconTexture: Interface\Icons\Ability_Hunter_BeastTaming
 # The unlocalized fallback goes first: later entries overwrite earlier ones, so
 # a locale with no entry of its own still lands in a sensible category.
