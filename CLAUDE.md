@@ -68,9 +68,22 @@ writes to them) rather than leaving them undeclared.
 
 ## Bumping for a new patch
 
-Update `## Interface:` in `PetWatch/PetWatch.toc` to the new build's interface number
-(`/dump select(4, GetBuildInfo())` in game). Run `/pw diag` before assuming
-anything else needs changing.
+Update `## Interface:` in `PetWatch/PetWatch.toc`. **Take the number from a live
+client** — `/dump select(4, GetBuildInfo())` — or from the Mainline row of the
+wiki's build table.
+
+Do not take it from a search result or from the newest-looking patch number. The
+highest 12.x version is usually the PTR, not live: at the time of writing,
+Mainline is 12.1.0 / `120100` while Mainline **Test** is 12.1.5 / `120105`. An
+addon declaring only the PTR number is marked incompatible on live and, unless
+the player ticks "Load out of date AddOns", does not load at all. That mistake
+has already cost one round here.
+
+The TOC lists both, comma-delimited, so the addon loads on either. Keep the live
+number first.
+
+Run `/pw diag` before assuming anything else needs changing; it prints the
+client's interface version next to the one the addon declares.
 
 ## Branch workflow
 
