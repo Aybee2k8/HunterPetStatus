@@ -30,7 +30,7 @@ function display.Create()
   end
 
   -- BackdropTemplate is what supplies SetBackdrop, used by the unlocked mode.
-  frame = CreateFrame('Frame', 'HunterPetStatusFrame', UIParent, 'BackdropTemplate')
+  frame = CreateFrame('Frame', 'PetWatchFrame', UIParent, 'BackdropTemplate')
   frame:SetSize(36, 36)
   frame:SetMovable(true)
   frame:EnableMouse(false)
