@@ -230,6 +230,7 @@ end
 
 local api = {
   SetPreview = spy('SetPreview'),
+  SetAlert = spy('SetAlert'),
   SetEnabled = spy('SetEnabled'),
   SetHideMounted = spy('SetHideMounted'),
   SetDisplayMode = spy('SetDisplayMode'),
@@ -251,6 +252,7 @@ local function load()
   snapshot = {
     enabled = true,
     hideMounted = true,
+    alert = true,
     displayMode = 'both',
     scale = 1.0,
     unlocked = false,
@@ -350,6 +352,7 @@ options.Refresh()
 
 local enabledBox = byKind('CheckButton', 1)
 local mountedBox = byKind('CheckButton', 2)
+local alertBox = byKind('CheckButton', 3)
 local scaleSlider = byKind('Slider', 1)
 local moveButton = byText('Move indicator')
 
@@ -367,6 +370,12 @@ mountedBox:SetChecked(false)
 mountedBox:Click()
 check('unchecking mounted reaches SetHideMounted', 'SetHideMounted', lastCall().name)
 check('unchecking mounted passes false', false, lastCall().value)
+
+check('the alert checkbox reflects the saved setting', true, alertBox:GetChecked())
+alertBox:SetChecked(false)
+alertBox:Click()
+check('unchecking the alert reaches SetAlert', 'SetAlert', lastCall().name)
+check('unchecking the alert passes false', false, lastCall().value)
 
 byText('Icon'):Click()
 check('the Icon button reaches SetDisplayMode', 'SetDisplayMode', lastCall().name)

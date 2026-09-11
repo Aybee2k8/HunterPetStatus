@@ -92,6 +92,7 @@ The slash commands remain as shortcuts:
 | `/pw unlock` / `/pw lock` | Reposition the indicator by dragging |
 | `/pw scale 1.0` | Resize it (0.3 – 4.0) |
 | `/pw display icon\|text\|both` | Choose what is shown |
+| `/pw alert on\|off` | Flash a warning in the middle of the screen |
 | `/pw mounted show\|hide` | Behaviour while mounted |
 | `/pw on` / `/pw off` | Enable or disable |
 | `/pw reset` | Restore defaults |
@@ -158,6 +159,15 @@ error at construction — which for a settings panel would take the addon down
 with it. The panel registers with the client's settings UI when that API is
 available and falls back to its own window when it is not; both hosts show the
 same content frame.
+
+**The alert fires on the change, not on the state.** Resolution runs on every
+pet event, so flashing whenever the state *is* dead would flash continuously for
+as long as the pet stayed dead. `state.ShouldAlert` compares against what the
+indicator last showed, and only a genuine transition into a state needing action
+counts. Alerts are also held back for five seconds after a loading screen: while
+the world loads, the pet unit can read as absent even though the pet is out, and
+flashing "Pet Missing!" at someone whose pet is next to them is worse than
+staying quiet.
 
 **Preview, because working looks like broken.** A healthy pet means the
 indicator is hidden — which is indistinguishable from an addon that does not

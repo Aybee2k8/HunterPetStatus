@@ -10,6 +10,7 @@ local DEFAULTS = {
   scale = 1.0,
   displayMode = 'both', -- 'icon' | 'text' | 'both'
   hideMounted = true,
+  alert = true,
   point = { 'CENTER', 'UIParent', 'CENTER', 0, 0 },
 }
 
@@ -73,6 +74,21 @@ local refreshBroken = false
 local preview
 local previewFromUnlock = false
 
+-- What the indicator last showed, which is what a transition is measured
+-- against. Kept apart from `current` because a preview changes what is on
+-- screen without changing what the pet is doing.
+local lastShown
+
+-- Alerts are held back briefly after a loading screen. While the world loads,
+-- the pet unit can read as absent even though the pet is out, and flashing
+-- "Pet Missing!" at someone whose pet is standing next to them is worse than
+-- staying quiet.
+local alertsQuietUntil = 0
+
+local function alertsQuiet()
+  return GetTime() < alertsQuietUntil
+end
+
 local function refresh()
   if refreshBroken then
     return
@@ -80,7 +96,15 @@ local function refresh()
 
   local err = guard(function()
     current = state.Resolve(db, current)
-    display.Update(preview or current, db.displayMode)
+
+    local shown = preview or current
+    display.Update(shown, db.displayMode)
+
+    if db.alert and not alertsQuiet() and state.ShouldAlert(lastShown, shown) then
+      display.Flash(shown)
+    end
+
+    lastShown = shown
   end)
 
   if not err then
@@ -155,6 +179,11 @@ function settings.SetHideMounted(value)
   refresh()
 end
 
+function settings.SetAlert(value)
+  db.alert = value and true or false
+  refresh()
+end
+
 function settings.SetDisplayMode(mode)
   db.displayMode = mode
   refresh()
@@ -181,6 +210,16 @@ function settings.SetPreview(mode)
   preview = resolved or nil
   previewFromUnlock = false
   refresh()
+
+  -- A preview is someone asking to see what this looks like, so it shows the
+  -- alert too -- and unconditionally, since refresh only flashes on a change
+  -- and previewing the same state twice is not one.
+  if preview and db.alert then
+    guard(function()
+      display.Flash(preview)
+    end)
+  end
+
   return true
 end
 
@@ -229,6 +268,7 @@ function settings.Snapshot()
   return {
     enabled = db.enabled,
     hideMounted = db.hideMounted,
+    alert = db.alert,
     displayMode = db.displayMode,
     scale = db.scale,
     unlocked = unlocked,
@@ -327,9 +367,14 @@ listener:SetScript('OnEvent', function(_, event, arg1)
     -- /pw diag.
     setupError.display = guard(function()
       display.Create()
+      display.CreateAlert()
       display.ApplyScale(db.scale)
       display.ApplyPosition(db.point)
     end)
+
+    -- The first resolution after login should not flash: it reports a state
+    -- that has been true all along rather than one that just changed.
+    alertsQuietUntil = GetTime() + 5
 
     setupError.options = guard(function()
       inSettingsUI = options.Create(settings)
@@ -355,6 +400,7 @@ listener:SetScript('OnEvent', function(_, event, arg1)
     preview = nil
     previewFromUnlock = false
     settings.SetUnlocked(false)
+    alertsQuietUntil = GetTime() + 5
   end
 
   refresh()
@@ -447,6 +493,17 @@ function commands.display(argument)
   say('display mode set to ' .. argument)
 end
 
+function commands.alert(argument)
+  if argument ~= 'on' and argument ~= 'off' then
+    say(('centre-screen alert: %s. usage: /pw alert on|off'):format(db.alert and 'on' or 'off'))
+    return
+  end
+
+  settings.SetAlert(argument == 'on')
+  refreshPanel()
+  say('centre-screen alert: ' .. argument)
+end
+
 function commands.mounted(argument)
   if argument ~= 'show' and argument ~= 'hide' then
     say(('while mounted: %s. usage: /pw mounted show|hide'):format(db.hideMounted and 'hide' or 'show'))
@@ -469,6 +526,7 @@ function commands.help()
   print('  /pw unlock | lock          - reposition the indicator')
   print('  /pw scale 1.0              - resize it')
   print('  /pw display icon|text|both - what to show')
+  print('  /pw alert on|off           - flash a warning in the middle of the screen')
   print('  /pw mounted show|hide      - behaviour while mounted')
   print('  /pw on | off               - enable or disable')
   print('  /pw reset                  - restore defaults')
