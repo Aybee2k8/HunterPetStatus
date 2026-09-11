@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  lua:
+    name: Syntax and tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua
+        run: sudo apt-get update && sudo apt-get install -y lua5.4 luarocks
+
+      - name: Install luacheck
+        run: sudo luarocks install luacheck
+
+      - name: Syntax check
+        run: |
+          for file in *.lua tests/*.lua; do
+            luac5.4 -p "$file"
+          done
+
+      - name: Lint
+        run: luacheck .
+
+      - name: Tests
+        run: lua5.4 tests/state_spec.lua
