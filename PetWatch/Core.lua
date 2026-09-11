@@ -47,13 +47,82 @@ local function initDB()
   db = PetWatchDB
 end
 
+-- What went wrong during setup, by part. Reported in chat once and repeated by
+-- /pw diag, because Lua errors are hidden by default in Retail: an unguarded
+-- failure leaves the addon doing nothing with nothing on screen to say why.
+local setupError = {}
+
+-- Runs fn and returns its error message, or nil if it succeeded.
+local function guard(fn)
+  local ok, err = pcall(fn)
+  if ok then
+    return nil
+  end
+  return tostring(err)
+end
+
+local refreshBroken = false
+
 local function refresh()
-  current = state.Resolve(db, current)
-  display.Update(current, db.displayMode)
+  if refreshBroken then
+    return
+  end
+
+  local err = guard(function()
+    current = state.Resolve(db, current)
+    display.Update(current, db.displayMode)
+  end)
+
+  if not err then
+    return
+  end
+
+  -- Updating on every pet event means a recurring error would spam the chat
+  -- frame, so it is reported once and then left alone.
+  refreshBroken = true
+  setupError.refresh = err
+  say('|cffff0000stopped updating the indicator:|r ' .. err)
+  say('settings and /pw diag still work. Please report this.')
+end
+
+local function reportSetup()
+  for _, part in ipairs({ 'display', 'options' }) do
+    if setupError[part] then
+      say(('|cffff0000%s failed to start:|r %s'):format(part, setupError[part]))
+    end
+  end
+
+  if setupError.options then
+    say('the settings panel is unavailable; /pw help lists the commands.')
+  end
 end
 
 local function onMoved(point)
   db.point = point
+end
+
+-- The panel is optional: it may have failed to build, or been built against a
+-- client whose settings API behaves differently. Neither is a reason for a
+-- slash command to stop working, so every call into it is isolated.
+local function refreshPanel()
+  local err = guard(options.Refresh)
+  if err and not setupError.options then
+    setupError.options = err
+  end
+end
+
+local function openPanel()
+  local opened
+  local err = guard(function()
+    opened = options.Open()
+  end)
+
+  if err then
+    setupError.options = setupError.options or err
+    return false
+  end
+
+  return opened
 end
 
 --------------------------------------------------------------------------------
@@ -135,6 +204,15 @@ function settings.Diagnostics()
   print(('  resolved state: %s'):format(current))
   print(('  saw pet die: %s'):format(tostring(state.SawPetDie())))
   print(('  settings host: %s'):format(inSettingsUI and 'client settings UI' or 'standalone window'))
+  print(('  interface: %s (addon declares %s)'):format(
+    tostring(select(4, GetBuildInfo())),
+    tostring(C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, 'Interface') or '?')))
+
+  for _, part in ipairs({ 'display', 'options', 'refresh' }) do
+    if setupError[part] then
+      print(('  |cffff0000%s failed:|r %s'):format(part, setupError[part]))
+    end
+  end
 
   for _, entry in ipairs(compat.probes) do
     print(('  [%s] %s'):format(entry.ok and '|cff00ff00ok|r' or '|cffff0000--|r', entry.name))
@@ -181,13 +259,24 @@ listener:SetScript('OnEvent', function(_, event, arg1)
     initDB()
     compat.ProbeOptional()
 
-    display.Create()
-    display.ApplyScale(db.scale)
-    display.ApplyPosition(db.point)
+    -- Each part of the setup is isolated, so a failure in one does not take the
+    -- rest of the addon with it. Lua errors are hidden by default in Retail, so
+    -- an unguarded error here would leave the addon doing nothing at all with
+    -- nothing on screen to say why -- the worst thing to hand someone.
+    -- Whatever survives, survives; what did not is named in chat and in
+    -- /pw diag.
+    setupError.display = guard(function()
+      display.Create()
+      display.ApplyScale(db.scale)
+      display.ApplyPosition(db.point)
+    end)
 
-    inSettingsUI = options.Create(settings)
+    setupError.options = guard(function()
+      inSettingsUI = options.Create(settings)
+    end)
 
     refresh()
+    reportSetup()
     return
   end
 
@@ -223,31 +312,31 @@ local commands = {}
 
 function commands.unlock()
   settings.SetUnlocked(true)
-  options.Refresh()
+  refreshPanel()
   say('unlocked - drag the icon, then /pw lock.')
 end
 
 function commands.lock()
   settings.SetUnlocked(false)
-  options.Refresh()
+  refreshPanel()
   say('locked.')
 end
 
 function commands.on()
   settings.SetEnabled(true)
-  options.Refresh()
+  refreshPanel()
   say('enabled.')
 end
 
 function commands.off()
   settings.SetEnabled(false)
-  options.Refresh()
+  refreshPanel()
   say('disabled.')
 end
 
 function commands.reset()
   settings.Reset()
-  options.Refresh()
+  refreshPanel()
   say('position and settings reset.')
 end
 
@@ -260,7 +349,7 @@ function commands.scale(argument)
   end
 
   settings.SetScale(value)
-  options.Refresh()
+  refreshPanel()
   say(('scale set to %.2f'):format(value))
 end
 
@@ -271,7 +360,7 @@ function commands.display(argument)
   end
 
   settings.SetDisplayMode(argument)
-  options.Refresh()
+  refreshPanel()
   say('display mode set to ' .. argument)
 end
 
@@ -282,7 +371,7 @@ function commands.mounted(argument)
   end
 
   settings.SetHideMounted(argument == 'hide')
-  options.Refresh()
+  refreshPanel()
   say('while mounted: ' .. argument)
 end
 
@@ -302,6 +391,19 @@ function commands.help()
   print('  /pw diag                   - report client API support')
 end
 
+-- Clicking the addon's entry in the minimap compartment opens the panel. Named
+-- in the TOC, so it has to be a global.
+function PetWatch_OnAddonCompartmentClick()
+  if not db then
+    say('still loading - try again in a moment.')
+    return
+  end
+
+  if not openPanel() then
+    say('could not open the settings panel - use /pw help for commands.')
+  end
+end
+
 SLASH_PETWATCH1 = '/pw'
 SLASH_PETWATCH2 = '/petwatch'
 
@@ -314,7 +416,7 @@ SlashCmdList.PETWATCH = function(input)
   local command, argument = (input or ''):lower():match('^%s*(%S*)%s*(%S*)')
 
   if command == '' then
-    if not options.Open() then
+    if not openPanel() then
       say('could not open the settings panel - use /pw help for commands.')
     end
     return
