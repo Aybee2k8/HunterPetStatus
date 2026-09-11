@@ -16,8 +16,8 @@ package.path = './?.lua;' .. package.path
 
 local ns = {}
 
-loadfile('Compat.lua')('HunterPetStatus', ns)
-loadfile('State.lua')('HunterPetStatus', ns)
+loadfile('Compat.lua')('PetWatch', ns)
+loadfile('State.lua')('PetWatch', ns)
 
 local state = ns.state
 

@@ -1,4 +1,4 @@
-package-as: HunterPetStatus
+package-as: PetWatch
 
 enable-nolib-creation: no
 
