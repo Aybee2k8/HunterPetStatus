@@ -1,5 +1,12 @@
 package-as: PetWatch
 
+# The addon lives in a PetWatch/ subfolder so that a plain clone or ZIP download
+# already contains a correctly named folder to drop into Interface/AddOns. The
+# packager copies the checkout to .release/PetWatch/, which would otherwise
+# nest as PetWatch/PetWatch -- this flattens it back.
+move-folders:
+  PetWatch/PetWatch: PetWatch
+
 enable-nolib-creation: no
 
 ignore:

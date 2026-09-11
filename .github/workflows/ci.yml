@@ -21,9 +21,14 @@ jobs:
 
       - name: Syntax check
         run: |
-          for file in *.lua tests/*.lua; do
+          for file in PetWatch/*.lua tests/*.lua; do
             luac5.4 -p "$file"
           done
+
+      # The folder name has to match the TOC name, or the client will not list
+      # the addon at all. Cheap to assert, and invisible when it breaks.
+      - name: Addon folder matches its TOC
+        run: test -f PetWatch/PetWatch.toc
 
       - name: Lint
         run: luacheck .
