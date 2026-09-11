@@ -78,6 +78,7 @@ The slash commands remain as shortcuts:
 | Command | Effect |
 | --- | --- |
 | `/pw` | Open the settings panel |
+| `/pw preview dead\|missing\|off` | Show the indicator without waiting for a dead pet (`/pw test` also works) |
 | `/pw unlock` / `/pw lock` | Reposition the indicator by dragging |
 | `/pw scale 1.0` | Resize it (0.3 – 4.0) |
 | `/pw display icon\|text\|both` | Choose what is shown |
@@ -142,6 +143,13 @@ error at construction — which for a settings panel would take the addon down
 with it. The panel registers with the client's settings UI when that API is
 available and falls back to its own window when it is not; both hosts show the
 same content frame.
+
+**Preview, because working looks like broken.** A healthy pet means the
+indicator is hidden — which is indistinguishable from an addon that does not
+work, and leaves no way to position it. Preview forces a state, and closes the
+panel when it does, since the panel covers the thing you asked to look at.
+Unlocking turns it on for the same reason: there would otherwise be nothing to
+drag. It is never saved, and ends on zone or reload.
 
 **No bundled font.** The addon this replaces shipped `Expressway.ttf` with no
 accompanying licence. This uses the game's own fonts.

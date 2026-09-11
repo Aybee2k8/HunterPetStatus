@@ -102,6 +102,24 @@ function Frame:SetText(value)
   return self
 end
 
+-- Recorded because colouring the label is how a radio row marks its selection;
+-- without this there is no way to read back which choice is active.
+function Frame:SetTextColor(r, g, b)
+  self.color = { r, g, b }
+  return self
+end
+
+local SELECTED = { 1, 0.82, 0 }
+
+function Frame:IsSelected()
+  local color = rawget(self, 'color')
+  if not color then
+    return false
+  end
+
+  return color[1] == SELECTED[1] and color[2] == SELECTED[2] and color[3] == SELECTED[3]
+end
+
 function Frame:GetText()
   return self.text
 end
@@ -158,8 +176,9 @@ _G.UISpecialFrames = {}
 -- private -- the same way the client reaches them, by running their handlers.
 local created = {}
 
-_G.CreateFrame = function(kind)
+_G.CreateFrame = function(kind, name)
   local frame = Frame.new(kind)
+  frame.name = name
   created[#created + 1] = frame
   return frame
 end
@@ -172,6 +191,14 @@ local function byKind(kind, index)
       if seen == index then
         return created[i]
       end
+    end
+  end
+end
+
+local function byName(name)
+  for i = 1, #created do
+    if created[i].name == name then
+      return created[i]
     end
   end
 end
@@ -202,6 +229,7 @@ local function lastCall()
 end
 
 local api = {
+  SetPreview = spy('SetPreview'),
   SetEnabled = spy('SetEnabled'),
   SetHideMounted = spy('SetHideMounted'),
   SetDisplayMode = spy('SetDisplayMode'),
@@ -226,6 +254,7 @@ local function load()
     displayMode = 'both',
     scale = 1.0,
     unlocked = false,
+    preview = 'off',
   }
 
   return ns.options
@@ -367,6 +396,49 @@ check('the diagnostics button reaches Diagnostics', 'Diagnostics', lastCall().na
 
 moveButton:Click()
 check('the move button reaches ToggleUnlocked', 'ToggleUnlocked', lastCall().name)
+
+--------------------------------------------------------------------------------
+-- Preview
+--------------------------------------------------------------------------------
+-- The panel covers the screen, so previewing the indicator is useless unless
+-- the panel gets out of the way. That is the behaviour these pin down.
+
+print('preview')
+
+local petWatchWindow = assert(byName('PetWatchOptionsFrame'), 'standalone window not built')
+
+byText('Dead'):Click()
+check('the Dead button reaches SetPreview', 'SetPreview', lastCall().name)
+check('the Dead button passes its mode', 'dead', lastCall().value)
+
+byText('Missing'):Click()
+check('the Missing button passes its mode', 'missing', lastCall().value)
+
+petWatchWindow:Show()
+byText('Dead'):Click()
+check('previewing closes the panel', false, petWatchWindow:IsShown())
+
+petWatchWindow:Show()
+byText('Off'):Click()
+check('the Off button passes its mode', 'off', lastCall().value)
+check('turning the preview off leaves the panel open', true, petWatchWindow:IsShown())
+
+snapshot.preview = 'missing'
+options.Refresh()
+check('refresh highlights the snapshot\'s preview', true, byText('Missing'):GetFontString():IsSelected())
+check('refresh unhighlights the others', false, byText('Dead'):GetFontString():IsSelected())
+
+-- Unlocking turns the preview on so there is something to drag, so it has to
+-- move the panel out of the way too.
+snapshot.unlocked = true
+petWatchWindow:Show()
+moveButton:Click()
+check('unlocking closes the panel', false, petWatchWindow:IsShown())
+
+snapshot.unlocked = false
+petWatchWindow:Show()
+moveButton:Click()
+check('locking leaves the panel open', true, petWatchWindow:IsShown())
 
 -- The panel refreshes after the toggle, so the label has to follow the state
 -- Core reports rather than being flipped locally.

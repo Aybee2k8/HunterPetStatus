@@ -88,6 +88,16 @@ the table above.
 - **Add new API dependencies to `compat.ProbeOptional`** so `/pw diag` reports
   them. That command is the first thing to run after a patch.
 
+- **Keep the preview out of saved variables.** It forces the indicator to show a
+  state the pet is not in. Persisting that would leave someone convinced their
+  pet is dead after a relog. It is cleared on `PLAYER_ENTERING_WORLD` for the
+  same reason.
+
+- **The TOC carries a literal `## Version`, not `@project-version@`.** The
+  placeholder is only substituted when a release is built, so a clone install
+  would display the placeholder itself. Bump it together with the release tag;
+  the release workflow refuses a tag that disagrees with it.
+
 ## Bumping for a new patch
 
 Update `## Interface:` in `PetWatch/PetWatch.toc`. **Take the number from a live
