@@ -30,6 +30,28 @@ All three run in CI. `luacheck` is configured to fail on warnings, so add new
 WoW globals to `read_globals` in `.luacheckrc` (or `globals`, if the addon
 writes to them) rather than leaving them undeclared.
 
+## What a live client has actually confirmed
+
+Measured on 12.1.0 (interface 120100), Beast Mastery, solo, **living pet**:
+
+| | |
+| --- | --- |
+| `UnitIsDeadOrGhost("pet")` | readable, not a secret value |
+| `HasPetUI` | present |
+| `GetSpecialization` (global) | still present, alongside `C_SpecializationInfo` |
+| Every registered event | accepted |
+
+Two corrections to earlier assumptions, recorded so they are not repeated:
+`GetSpecialization` was **not** removed in 12.0, and the predecessor addon's
+`## Interface: 120000, 120100` was **not** out of date — 120100 is live. Both
+claims came from search summaries rather than a primary source.
+
+What is still unmeasured: the dead-pet path (does `UnitExists("pet")` stay true
+once the pet dies?), and whether any of these stay readable in combat, raids or
+Mythic+. Secret values are context-dependent, so a solo reading proves very
+little. This is why `compat.SafeFlag` stays on every unit query regardless of
+the table above.
+
 ## Rules specific to this addon
 
 - **Never call a unit API directly.** Everything goes through `compat.SafeFlag`
@@ -65,6 +87,16 @@ writes to them) rather than leaving them undeclared.
 
 - **Add new API dependencies to `compat.ProbeOptional`** so `/pw diag` reports
   them. That command is the first thing to run after a patch.
+
+- **Keep the preview out of saved variables.** It forces the indicator to show a
+  state the pet is not in. Persisting that would leave someone convinced their
+  pet is dead after a relog. It is cleared on `PLAYER_ENTERING_WORLD` for the
+  same reason.
+
+- **The TOC carries a literal `## Version`, not `@project-version@`.** The
+  placeholder is only substituted when a release is built, so a clone install
+  would display the placeholder itself. Bump it together with the release tag;
+  the release workflow refuses a tag that disagrees with it.
 
 ## Bumping for a new patch
 

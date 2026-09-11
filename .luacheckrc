@@ -23,6 +23,8 @@ read_globals = {
   'GetSpecialization',
   'GetSpecializationInfo',
   'Settings',
+  'SettingsPanel',
+  'HideUIPanel',
   'C_AddOns',
   'unpack',
 }
