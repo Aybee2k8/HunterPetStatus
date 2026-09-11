@@ -198,15 +198,29 @@ end
 function settings.Diagnostics()
   local version, build = GetBuildInfo(), select(4, GetBuildInfo())
 
+  -- GetAddOnMetadata only exposes Author, Version and X-* fields; Interface is
+  -- not among them, so there is no way to read back what the TOC declared. The
+  -- addon list already marks a mismatch, and the client's own number is here.
+  local addonVersion = '?'
+  if C_AddOns and C_AddOns.GetAddOnMetadata then
+    addonVersion = C_AddOns.GetAddOnMetadata(ADDON, 'Version') or '?'
+  end
+
   say('diagnostics')
-  print(('  build: %s (%s)'):format(version, build))
+  print(('  addon: %s'):format(addonVersion))
+  print(('  build: %s (interface %s)'):format(version, build))
   print(('  spec ID: %s'):format(tostring(compat.GetSpecID())))
   print(('  resolved state: %s'):format(current))
   print(('  saw pet die: %s'):format(tostring(state.SawPetDie())))
   print(('  settings host: %s'):format(inSettingsUI and 'client settings UI' or 'standalone window'))
-  print(('  interface: %s (addon declares %s)'):format(
-    tostring(select(4, GetBuildInfo())),
-    tostring(C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, 'Interface') or '?')))
+
+  -- The values themselves, not just whether they were readable. Whether the pet
+  -- unit keeps answering once the pet is dead is the one thing the harnesses
+  -- cannot settle, and this is the line that answers it.
+  print(('  pet: exists=%s dead=%s hunterPetUI=%s'):format(
+    tostring(compat.SafeFlag(_G.UnitExists, 'pet')),
+    tostring(compat.SafeFlag(_G.UnitIsDeadOrGhost, 'pet')),
+    tostring(compat.HunterPetUI())))
 
   for _, part in ipairs({ 'display', 'options', 'refresh' }) do
     if setupError[part] then

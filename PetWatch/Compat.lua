@@ -151,6 +151,29 @@ function compat.InCombatLockdown()
   return compat.SafeFlag(_G.InCombatLockdown)
 end
 
+-- Whether the client still shows a hunter pet's action bar.
+--
+-- Deliberately collapses "absent", "errored" and "not a hunter pet" all to
+-- false: callers use this only as evidence that something is still there, never
+-- as evidence that a pet is fine.
+function compat.HunterPetUI()
+  if type(_G.HasPetUI) ~= 'function' then
+    return false
+  end
+
+  local ok, hasUI, isHunterPet = pcall(_G.HasPetUI)
+  if not ok then
+    return false
+  end
+
+  local usable
+  ok, usable = pcall(function()
+    return (hasUI and isHunterPet) and true or false
+  end)
+
+  return ok and usable or false
+end
+
 -- Records the state of APIs we depend on but do not wrap, so /pw diag covers
 -- them too.
 function compat.ProbeOptional()
