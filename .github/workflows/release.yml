@@ -10,6 +10,16 @@ jobs:
     name: Package and upload
     runs-on: ubuntu-latest
 
+    env:
+      # The packager's README names CF_API_TOKEN; the GitHub Action's own wiki
+      # example names CF_API_KEY. The two disagree and it is not worth a failed
+      # release to find out which wins, so both are set from the same secret.
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      CF_API_TOKEN: ${{ secrets.CF_API_KEY }}
+      WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+      WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }}
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,11 +38,13 @@ jobs:
           fi
           echo "version $toc"
 
-      # Uploads to CurseForge and Wago only if the matching secret is set, so
-      # this workflow is useful for building a zip before either is configured.
+      # Pinned to the v2 tag rather than master: an action that moves under you
+      # turns a release into a debugging session.
+      #
+      # Uploading needs two things beyond the token: '## X-Curse-Project-ID' in
+      # the TOC (and '## X-Wago-ID' for Wago), and the matching secret. Without
+      # them the packager still builds the zip and attaches it to the GitHub
+      # release, it just skips the upload — which is why this is useful before
+      # either is configured.
       - name: Package
-        uses: BigWigsMods/packager@master
-        env:
-          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
-          CF_API_KEY: ${{ secrets.CF_API_KEY }}
-          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+        uses: BigWigsMods/packager@v2
