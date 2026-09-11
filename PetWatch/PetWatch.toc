@@ -10,7 +10,7 @@
 # only substituted when a release is built, so a clone or ZIP install would show
 # the placeholder itself in the addon list. Bump this with the release tag --
 # the release workflow refuses a tag that does not match.
-## Version: 0.1.0
+## Version: 0.2.0
 ## SavedVariables: PetWatchDB
 ## IconTexture: Interface\Icons\Ability_Hunter_BeastTaming
 # The unlocalized fallback goes first: later entries overwrite earlier ones, so

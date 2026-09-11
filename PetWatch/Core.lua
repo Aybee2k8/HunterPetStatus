@@ -10,12 +10,18 @@ local DEFAULTS = {
   scale = 1.0,
   displayMode = 'both', -- 'icon' | 'text' | 'both'
   hideMounted = true,
+  alert = true,
+  alertFont = 'default',
+  alertSize = 32,
+  alertColor = { 1, 0.3, 0.3 },
+  alertPoint = { 'CENTER', 'UIParent', 'CENTER', 0, 160 },
   point = { 'CENTER', 'UIParent', 'CENTER', 0, 0 },
 }
 
 local db
 local current = state.UNKNOWN
 local unlocked = false
+local alertUnlocked = false
 local inSettingsUI = false
 
 local function say(message)
@@ -73,6 +79,21 @@ local refreshBroken = false
 local preview
 local previewFromUnlock = false
 
+-- What the indicator last showed, which is what a transition is measured
+-- against. Kept apart from `current` because a preview changes what is on
+-- screen without changing what the pet is doing.
+local lastShown
+
+-- Alerts are held back briefly after a loading screen. While the world loads,
+-- the pet unit can read as absent even though the pet is out, and flashing
+-- "Pet Missing!" at someone whose pet is standing next to them is worse than
+-- staying quiet.
+local alertsQuietUntil = 0
+
+local function alertsQuiet()
+  return GetTime() < alertsQuietUntil
+end
+
 local function refresh()
   if refreshBroken then
     return
@@ -80,7 +101,15 @@ local function refresh()
 
   local err = guard(function()
     current = state.Resolve(db, current)
-    display.Update(preview or current, db.displayMode)
+
+    local shown = preview or current
+    display.Update(shown, db.displayMode)
+
+    if db.alert and not alertsQuiet() and state.ShouldAlert(lastShown, shown) then
+      display.Flash(shown)
+    end
+
+    lastShown = shown
   end)
 
   if not err then
@@ -155,6 +184,49 @@ function settings.SetHideMounted(value)
   refresh()
 end
 
+function settings.SetAlert(value)
+  db.alert = value and true or false
+  refresh()
+end
+
+local function applyAlertStyle()
+  local applied = display.ApplyAlertStyle(db.alertFont, db.alertSize, db.alertColor)
+
+  -- A refused font leaves readable text in the default face rather than
+  -- nothing, but saying so beats letting someone wonder why their choice did
+  -- not take.
+  if not applied and db.alertFont ~= 'default' then
+    say(('this client refused the "%s" font; using the default.'):format(db.alertFont))
+    db.alertFont = 'default'
+  end
+end
+
+function settings.SetAlertFont(font)
+  db.alertFont = font
+  applyAlertStyle()
+end
+
+function settings.SetAlertSize(size)
+  db.alertSize = size
+  applyAlertStyle()
+end
+
+function settings.SetAlertColor(r, g, b)
+  db.alertColor = { r, g, b }
+  applyAlertStyle()
+end
+
+function settings.SetAlertUnlocked(value)
+  alertUnlocked = value and true or false
+  display.SetAlertUnlocked(alertUnlocked, function(point)
+    db.alertPoint = point
+  end)
+end
+
+function settings.ToggleAlertUnlocked()
+  settings.SetAlertUnlocked(not alertUnlocked)
+end
+
 function settings.SetDisplayMode(mode)
   db.displayMode = mode
   refresh()
@@ -181,6 +253,16 @@ function settings.SetPreview(mode)
   preview = resolved or nil
   previewFromUnlock = false
   refresh()
+
+  -- A preview is someone asking to see what this looks like, so it shows the
+  -- alert too -- and unconditionally, since refresh only flashes on a change
+  -- and previewing the same state twice is not one.
+  if preview and db.alert then
+    guard(function()
+      display.Flash(preview)
+    end)
+  end
+
   return true
 end
 
@@ -215,12 +297,21 @@ function settings.Reset()
   db.hideMounted = DEFAULTS.hideMounted
   db.enabled = DEFAULTS.enabled
 
+  db.alert = DEFAULTS.alert
+  db.alertFont = DEFAULTS.alertFont
+  db.alertSize = DEFAULTS.alertSize
+  db.alertColor = { unpack(DEFAULTS.alertColor) }
+  db.alertPoint = { unpack(DEFAULTS.alertPoint) }
+
   preview = nil
   previewFromUnlock = false
 
   settings.SetUnlocked(false)
+  settings.SetAlertUnlocked(false)
   display.ApplyScale(db.scale)
   display.ApplyPosition(db.point)
+  display.ApplyAlertPosition(db.alertPoint)
+  display.ApplyAlertStyle(db.alertFont, db.alertSize, db.alertColor)
   refresh()
 end
 
@@ -229,6 +320,11 @@ function settings.Snapshot()
   return {
     enabled = db.enabled,
     hideMounted = db.hideMounted,
+    alert = db.alert,
+    alertFont = db.alertFont,
+    alertSize = db.alertSize,
+    alertColor = db.alertColor,
+    alertUnlocked = alertUnlocked,
     displayMode = db.displayMode,
     scale = db.scale,
     unlocked = unlocked,
@@ -327,9 +423,16 @@ listener:SetScript('OnEvent', function(_, event, arg1)
     -- /pw diag.
     setupError.display = guard(function()
       display.Create()
+      display.CreateAlert()
       display.ApplyScale(db.scale)
       display.ApplyPosition(db.point)
+      display.ApplyAlertPosition(db.alertPoint)
+      display.ApplyAlertStyle(db.alertFont, db.alertSize, db.alertColor)
     end)
+
+    -- The first resolution after login should not flash: it reports a state
+    -- that has been true all along rather than one that just changed.
+    alertsQuietUntil = GetTime() + 5
 
     setupError.options = guard(function()
       inSettingsUI = options.Create(settings)
@@ -355,6 +458,8 @@ listener:SetScript('OnEvent', function(_, event, arg1)
     preview = nil
     previewFromUnlock = false
     settings.SetUnlocked(false)
+    settings.SetAlertUnlocked(false)
+    alertsQuietUntil = GetTime() + 5
   end
 
   refresh()
@@ -447,6 +552,50 @@ function commands.display(argument)
   say('display mode set to ' .. argument)
 end
 
+function commands.alert(argument)
+  if argument ~= 'on' and argument ~= 'off' then
+    say(('centre-screen alert: %s. usage: /pw alert on|off'):format(db.alert and 'on' or 'off'))
+    return
+  end
+
+  settings.SetAlert(argument == 'on')
+  refreshPanel()
+  say('centre-screen alert: ' .. argument)
+end
+
+local ALERT_FONTS = { default = true, arial = true, skurri = true, morpheus = true }
+
+function commands.alertfont(argument)
+  if not ALERT_FONTS[argument] then
+    say(('alert font is %s. usage: /pw alertfont default|arial|skurri|morpheus'):format(db.alertFont))
+    return
+  end
+
+  settings.SetAlertFont(argument)
+  refreshPanel()
+  say('alert font: ' .. argument)
+end
+
+function commands.alertsize(argument)
+  local value = tonumber(argument)
+
+  if not value or value < 12 or value > 72 then
+    say(('alert size is %d. usage: /pw alertsize 32  (12 - 72)'):format(db.alertSize))
+    return
+  end
+
+  settings.SetAlertSize(value)
+  refreshPanel()
+  say(('alert size: %d'):format(value))
+end
+
+function commands.alertmove()
+  settings.ToggleAlertUnlocked()
+  refreshPanel()
+  say(alertUnlocked and 'alert unlocked - drag it, then /pw alertmove again.'
+    or 'alert locked.')
+end
+
 function commands.mounted(argument)
   if argument ~= 'show' and argument ~= 'hide' then
     say(('while mounted: %s. usage: /pw mounted show|hide'):format(db.hideMounted and 'hide' or 'show'))
@@ -469,6 +618,10 @@ function commands.help()
   print('  /pw unlock | lock          - reposition the indicator')
   print('  /pw scale 1.0              - resize it')
   print('  /pw display icon|text|both - what to show')
+  print('  /pw alert on|off           - flash a warning in the middle of the screen')
+  print('  /pw alertfont default|arial|skurri|morpheus')
+  print('  /pw alertsize 32           - warning text size (12 - 72)')
+  print('  /pw alertmove              - reposition the warning')
   print('  /pw mounted show|hide      - behaviour while mounted')
   print('  /pw on | off               - enable or disable')
   print('  /pw reset                  - restore defaults')

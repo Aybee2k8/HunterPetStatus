@@ -16,8 +16,17 @@ local _, ns = ...
 local options = {}
 ns.options = options
 
-local PANEL_WIDTH = 560
+local PANEL_WIDTH = 720
+local COLUMN_TWO = 380
 local PADDING = 16
+
+-- Mirrors display.FONTS; kept here because only the panel needs the labels.
+local FONT_LABELS = {
+  { value = 'default', label = 'Default' },
+  { value = 'arial', label = 'Arial' },
+  { value = 'skurri', label = 'Skurri' },
+  { value = 'morpheus', label = 'Morpheus' },
+}
 
 local api      -- callbacks supplied by Core
 local content  -- the frame holding every widget
@@ -36,10 +45,14 @@ local function heading(parent, text, anchor, gap)
   return font
 end
 
-local function description(parent, text, anchor, gap)
+local function description(parent, text, anchor, gap, width)
   local font = parent:CreateFontString(nil, 'ARTWORK', 'GameFontHighlightSmall')
   font:SetPoint('TOPLEFT', anchor, 'BOTTOMLEFT', 0, -(gap or 4))
-  font:SetPoint('RIGHT', parent, 'RIGHT', -PADDING, 0)
+  if width then
+    font:SetWidth(width)
+  else
+    font:SetPoint('RIGHT', parent, 'RIGHT', -PADDING, 0)
+  end
   font:SetJustifyH('LEFT')
   font:SetText(text)
   return font
@@ -66,14 +79,14 @@ end
 -- A row of buttons behaving as a radio group. Used instead of a dropdown: the
 -- dropdown API has been rewritten more than once, and three options do not
 -- justify the risk.
-local function radioRow(parent, choices, anchor, gap, onSelect)
+local function radioRow(parent, choices, anchor, gap, onSelect, width)
   local buttons = {}
   local previous
 
   for index = 1, #choices do
     local choice = choices[index]
     local button = CreateFrame('Button', nil, parent, 'UIPanelButtonTemplate')
-    button:SetSize(90, 22)
+    button:SetSize(width or 90, 22)
     button:SetText(choice.label)
 
     if previous then
@@ -137,6 +150,43 @@ local function slider(parent, anchor, gap, minimum, maximum, step, onChange)
   return frame
 end
 
+-- A labelled slider for the second column: the existing slider() anchors below
+-- its anchor, which is all the first column needs.
+local function labelledSlider(parent, text, anchor, gap, minimum, maximum, step, format, onChange)
+  local caption = parent:CreateFontString(nil, 'ARTWORK', 'GameFontHighlightSmall')
+  caption:SetPoint('TOPLEFT', anchor, 'BOTTOMLEFT', 0, -(gap or 16))
+  caption:SetText(text)
+
+  local frame = CreateFrame('Slider', nil, parent)
+  frame:SetPoint('TOPLEFT', caption, 'BOTTOMLEFT', 0, -8)
+  frame:SetSize(200, 16)
+  frame:SetOrientation('HORIZONTAL')
+  frame:SetMinMaxValues(minimum, maximum)
+  frame:SetValueStep(step)
+  frame:SetThumbTexture('Interface\\Buttons\\UI-SliderBar-Button-Horizontal')
+  pcall(frame.SetObeyStepOnDrag, frame, true)
+
+  local track = frame:CreateTexture(nil, 'BACKGROUND')
+  track:SetColorTexture(0, 0, 0, 0.5)
+  track:SetPoint('LEFT')
+  track:SetPoint('RIGHT')
+  track:SetHeight(4)
+
+  local value = frame:CreateFontString(nil, 'ARTWORK', 'GameFontHighlightSmall')
+  value:SetPoint('LEFT', frame, 'RIGHT', 12, 0)
+
+  frame.valueText = value
+
+  frame:SetScript('OnValueChanged', function(self, newValue, byUser)
+    value:SetText(format:format(newValue))
+    if byUser then
+      onChange(newValue)
+    end
+  end)
+
+  return frame
+end
+
 local function actionButton(parent, label, width, anchor, point, relativePoint, x, y, onClick)
   local button = CreateFrame('Button', nil, parent, 'UIPanelButtonTemplate')
   button:SetSize(width, 22)
@@ -169,7 +219,12 @@ local function build()
     api.SetHideMounted(checked)
   end)
 
-  local displayHeading = heading(content, 'Display', widgets.hideMounted, 16)
+  widgets.alert = checkbox(content, 'Flash a warning in the middle of the screen',
+    widgets.hideMounted, 4, function(checked)
+      api.SetAlert(checked)
+    end)
+
+  local displayHeading = heading(content, 'Display', widgets.alert, 16)
   description(content, 'What the indicator shows.', displayHeading, 2)
 
   widgets.display = radioRow(content, {
@@ -234,6 +289,65 @@ local function build()
     'Report API support prints what this client supports to chat. Run it after a '
     .. 'game patch, and include it in a bug report.',
     widgets.move, 38)
+
+  ------------------------------------------------------------------------------
+  -- Second column: how the alert looks
+  ------------------------------------------------------------------------------
+  -- A second column rather than a longer page: a canvas settings category does
+  -- not scroll, so anything past the bottom is simply unreachable.
+
+  local alertHeading = content:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+  alertHeading:SetPoint('TOPLEFT', content, 'TOPLEFT', COLUMN_TWO, -PADDING)
+  alertHeading:SetText('Alert appearance')
+
+  description(content,
+    'How the centre-screen warning looks. Move it, then preview to see it.',
+    alertHeading, 4, PANEL_WIDTH - COLUMN_TWO - PADDING)
+
+  local fontHeading = content:CreateFontString(nil, 'ARTWORK', 'GameFontHighlightSmall')
+  fontHeading:SetPoint('TOPLEFT', alertHeading, 'BOTTOMLEFT', 0, -34)
+  fontHeading:SetText('Font')
+
+  local fontChoices = {}
+  for index = 1, #FONT_LABELS do
+    fontChoices[index] = FONT_LABELS[index]
+  end
+
+  widgets.alertFont = radioRow(content, fontChoices, fontHeading, 8, function(font)
+    api.SetAlertFont(font)
+    options.Refresh()
+  end, 76)
+
+  widgets.alertSize = labelledSlider(content, 'Size', widgets.alertFont.buttons.default, 16,
+    12, 72, 1, '%d', function(value)
+      api.SetAlertSize(value)
+    end)
+
+  widgets.alertRed = labelledSlider(content, 'Red', widgets.alertSize, 18, 0, 1, 0.05, '%.2f',
+    function(value)
+      api.SetAlertColor(value, widgets.alertGreen:GetValue(), widgets.alertBlue:GetValue())
+    end)
+
+  widgets.alertGreen = labelledSlider(content, 'Green', widgets.alertRed, 12, 0, 1, 0.05, '%.2f',
+    function(value)
+      api.SetAlertColor(widgets.alertRed:GetValue(), value, widgets.alertBlue:GetValue())
+    end)
+
+  widgets.alertBlue = labelledSlider(content, 'Blue', widgets.alertGreen, 12, 0, 1, 0.05, '%.2f',
+    function(value)
+      api.SetAlertColor(widgets.alertRed:GetValue(), widgets.alertGreen:GetValue(), value)
+    end)
+
+  widgets.alertMove = actionButton(content, 'Move alert', 130,
+    widgets.alertBlue, 'TOPLEFT', 'BOTTOMLEFT', 0, -26, function()
+      api.ToggleAlertUnlocked()
+      options.Refresh()
+
+      -- Same reason as the indicator: the panel covers the thing being placed.
+      if api.Snapshot().alertUnlocked then
+        options.Close()
+      end
+    end)
 
   content:SetScript('OnShow', options.Refresh)
 
@@ -333,6 +447,19 @@ function options.Refresh()
 
   widgets.enabled:SetChecked(settings.enabled)
   widgets.hideMounted:SetChecked(settings.hideMounted)
+  widgets.alert:SetChecked(settings.alert)
+  widgets.alertFont.Select(settings.alertFont)
+  widgets.alertSize:SetValue(settings.alertSize)
+  widgets.alertSize.valueText:SetText(('%d'):format(settings.alertSize))
+  widgets.alertMove:SetText(settings.alertUnlocked and 'Lock alert' or 'Move alert')
+
+  local color = settings.alertColor or { 1, 1, 1 }
+  widgets.alertRed:SetValue(color[1])
+  widgets.alertGreen:SetValue(color[2])
+  widgets.alertBlue:SetValue(color[3])
+  widgets.alertRed.valueText:SetText(('%.2f'):format(color[1]))
+  widgets.alertGreen.valueText:SetText(('%.2f'):format(color[2]))
+  widgets.alertBlue.valueText:SetText(('%.2f'):format(color[3]))
   widgets.display.Select(settings.displayMode)
   widgets.preview.Select(settings.preview)
   widgets.scale:SetValue(settings.scale)

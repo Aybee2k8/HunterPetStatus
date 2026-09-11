@@ -49,6 +49,19 @@ function state.SawPetDie()
   return sawPetDie
 end
 
+-- Whether moving from `previous` to `current` deserves a screen-centre alert.
+--
+-- Only a genuine transition into a state that needs action counts. Resolution
+-- runs on every pet event, so alerting on the state itself rather than on the
+-- change into it would flash continuously for as long as the pet stayed dead.
+function state.ShouldAlert(previous, current)
+  if current ~= state.MISSING and current ~= state.DEAD then
+    return false
+  end
+
+  return previous ~= current
+end
+
 local function isHunter()
   local _, class = UnitClass('player')
   return class == 'HUNTER'
