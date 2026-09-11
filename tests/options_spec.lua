@@ -231,6 +231,12 @@ end
 local api = {
   SetPreview = spy('SetPreview'),
   SetAlert = spy('SetAlert'),
+  SetAlertFont = spy('SetAlertFont'),
+  SetAlertSize = spy('SetAlertSize'),
+  SetAlertColor = function(r, g, b)
+    calls[#calls + 1] = { name = 'SetAlertColor', value = ('%.2f/%.2f/%.2f'):format(r, g, b) }
+  end,
+  ToggleAlertUnlocked = spy('ToggleAlertUnlocked'),
   SetEnabled = spy('SetEnabled'),
   SetHideMounted = spy('SetHideMounted'),
   SetDisplayMode = spy('SetDisplayMode'),
@@ -253,6 +259,10 @@ local function load()
     enabled = true,
     hideMounted = true,
     alert = true,
+    alertFont = 'default',
+    alertSize = 32,
+    alertColor = { 1, 0.3, 0.3 },
+    alertUnlocked = false,
     displayMode = 'both',
     scale = 1.0,
     unlocked = false,
@@ -454,6 +464,64 @@ check('locking leaves the panel open', true, petWatchWindow:IsShown())
 snapshot.unlocked = true
 options.Refresh()
 check('the move button reads as locked once unlocked', 'Lock indicator', moveButton.text)
+
+--------------------------------------------------------------------------------
+-- Alert appearance
+--------------------------------------------------------------------------------
+
+print('alert appearance')
+
+local alertSize = byKind('Slider', 2)
+local alertRed = byKind('Slider', 3)
+local alertGreen = byKind('Slider', 4)
+local alertBlue = byKind('Slider', 5)
+
+snapshot.alertFont = 'default'
+snapshot.alertSize = 32
+snapshot.alertColor = { 1, 0.3, 0.3 }
+snapshot.alertUnlocked = false
+options.Refresh()
+
+check('the size slider reflects the saved size', 32, alertSize:GetValue())
+check('the colour sliders reflect the saved colour', 1, alertRed:GetValue())
+check('refresh highlights the saved font', true, byText('Default'):GetFontString():IsSelected())
+
+byText('Morpheus'):Click()
+check('a font button reaches SetAlertFont', 'SetAlertFont', lastCall().name)
+check('a font button passes its value', 'morpheus', lastCall().value)
+
+alertSize:SetValue(48, true)
+check('dragging size reaches SetAlertSize', 'SetAlertSize', lastCall().name)
+check('dragging size passes the value', 48, lastCall().value)
+
+-- The subtle one: each colour slider has to send the other two channels as
+-- they currently are, or moving one would reset the others.
+alertRed:SetValue(0.5, true)
+check('dragging red reaches SetAlertColor', 'SetAlertColor', lastCall().name)
+check('dragging red keeps green and blue', '0.50/0.30/0.30', lastCall().value)
+
+alertGreen:SetValue(0.8, true)
+check('dragging green keeps red and blue', '0.50/0.80/0.30', lastCall().value)
+
+alertBlue:SetValue(0.1, true)
+check('dragging blue keeps red and green', '0.50/0.80/0.10', lastCall().value)
+
+calls = {}
+alertRed:SetValue(0.2, false)
+check('a programmatic colour change is not saved', nil, lastCall().name)
+
+local alertMove = byText('Move alert')
+snapshot.alertUnlocked = true
+petWatchWindow:Show()
+alertMove:Click()
+check('unlocking the alert reaches ToggleAlertUnlocked', 'ToggleAlertUnlocked', lastCall().name)
+check('unlocking the alert closes the panel', false, petWatchWindow:IsShown())
+check('the alert move button reads as locked', 'Lock alert', alertMove.text)
+
+snapshot.alertUnlocked = false
+petWatchWindow:Show()
+alertMove:Click()
+check('locking the alert leaves the panel open', true, petWatchWindow:IsShown())
 
 --------------------------------------------------------------------------------
 -- Refresh before create
