@@ -8,7 +8,7 @@
 -- right callback with the right value. Those are the failures that would
 -- otherwise only show up as a Lua error on someone's screen.
 
-package.path = './?.lua;' .. package.path
+package.path = './PetWatch/?.lua;' .. package.path
 
 local failures = 0
 
@@ -216,7 +216,7 @@ local api = {
 
 local function load()
   local ns = {}
-  loadfile('Options.lua')('PetWatch', ns)
+  loadfile('PetWatch/Options.lua')('PetWatch', ns)
 
   calls = {}
   created = {}
@@ -381,7 +381,7 @@ check('the move button reads as locked once unlocked', 'Lock indicator', moveBut
 print('refresh before create')
 
 local bare = {}
-loadfile('Options.lua')('PetWatch', bare)
+loadfile('PetWatch/Options.lua')('PetWatch', bare)
 checkNoError('refresh is a no-op before create', bare.options.Refresh)
 check('open reports failure before create', false, bare.options.Open())
 
