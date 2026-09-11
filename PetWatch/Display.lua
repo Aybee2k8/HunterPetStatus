@@ -13,11 +13,13 @@ local APPEARANCE = {
   [state.DEAD] = {
     icon = ICON_DEAD,
     text = 'Pet dead',
+    alert = 'Pet Dead!',
     color = { 1, 0.35, 0.35 },
   },
   [state.MISSING] = {
     icon = ICON_MISSING,
     text = 'Pet missing',
+    alert = 'Pet Missing!',
     color = { 1, 0.82, 0.25 },
   },
 }
@@ -88,6 +90,88 @@ function display.Update(current, mode)
   label:SetTextColor(appearance.color[1], appearance.color[2], appearance.color[3])
   layout(mode)
   frame:Show()
+end
+
+--------------------------------------------------------------------------------
+-- Centre-screen alert
+--------------------------------------------------------------------------------
+
+-- A brief flash near the middle of the screen when the pet's state changes to
+-- something that needs action. The persistent indicator is easy to miss in a
+-- busy fight; this is the part you cannot miss, which is also why it fades
+-- instead of staying.
+
+local alert, alertLabel
+
+local ALERT_HOLD = 1.5   -- seconds at full opacity
+local ALERT_FADE = 1.25  -- seconds fading out
+
+-- The huge font object has been around for many expansions, but a missing font
+-- object is a hard error at construction, and this runs during setup.
+local function bigFontString(parent)
+  local ok, font = pcall(parent.CreateFontString, parent, nil, 'OVERLAY', 'GameFontNormalHuge')
+  if ok and font then
+    return font
+  end
+
+  return parent:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+end
+
+function display.CreateAlert()
+  if alert then
+    return alert
+  end
+
+  alert = CreateFrame('Frame', nil, UIParent)
+  alert:SetSize(1, 1)
+  -- Above centre: the middle of the screen is where the character stands, and
+  -- covering that is how you lose a fight rather than win one.
+  alert:SetPoint('CENTER', UIParent, 'CENTER', 0, 160)
+  alert:SetFrameStrata('HIGH')
+  alert:Hide()
+
+  alertLabel = bigFontString(alert)
+  alertLabel:SetPoint('CENTER')
+
+  return alert
+end
+
+-- Flashes the alert for the given state. Does nothing for states that need no
+-- action, so callers do not have to filter.
+function display.Flash(current)
+  local appearance = APPEARANCE[current]
+
+  if not alert or not appearance or not appearance.alert then
+    return false
+  end
+
+  alertLabel:SetText(appearance.alert)
+  alertLabel:SetTextColor(appearance.color[1], appearance.color[2], appearance.color[3])
+
+  alert.elapsed = 0
+  alert:SetAlpha(1)
+  alert:Show()
+
+  -- Driven by OnUpdate rather than an animation group: one less API surface to
+  -- be wrong about, and the timing is trivial.
+  alert:SetScript('OnUpdate', function(self, delta)
+    self.elapsed = self.elapsed + delta
+
+    if self.elapsed <= ALERT_HOLD then
+      return
+    end
+
+    local remaining = 1 - (self.elapsed - ALERT_HOLD) / ALERT_FADE
+    if remaining <= 0 then
+      self:SetScript('OnUpdate', nil)
+      self:Hide()
+      return
+    end
+
+    self:SetAlpha(remaining)
+  end)
+
+  return true
 end
 
 function display.SetUnlocked(unlocked, onMoved)

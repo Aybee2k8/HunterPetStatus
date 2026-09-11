@@ -222,6 +222,26 @@ client.petDead = 'secret'
 check('unreadable condition falls back to the death memory', state.DEAD, state.Resolve(db, state.OK))
 
 --------------------------------------------------------------------------------
+-- Centre-screen alert
+--------------------------------------------------------------------------------
+-- Resolution runs on every pet event, so alerting on the state rather than on
+-- the change into it would flash continuously for as long as the pet stayed
+-- dead. These pin that down.
+
+print('alert transitions')
+
+check('entering missing alerts', true, state.ShouldAlert(state.OK, state.MISSING))
+check('entering dead alerts', true, state.ShouldAlert(state.OK, state.DEAD))
+check('missing to dead alerts', true, state.ShouldAlert(state.MISSING, state.DEAD))
+check('staying missing does not alert', false, state.ShouldAlert(state.MISSING, state.MISSING))
+check('staying dead does not alert', false, state.ShouldAlert(state.DEAD, state.DEAD))
+check('recovering does not alert', false, state.ShouldAlert(state.DEAD, state.OK))
+check('going hidden does not alert', false, state.ShouldAlert(state.DEAD, state.HIDDEN))
+check('becoming unknown does not alert', false, state.ShouldAlert(state.DEAD, state.UNKNOWN))
+check('first resolution into missing alerts', true, state.ShouldAlert(nil, state.MISSING))
+check('first resolution into ok does not alert', false, state.ShouldAlert(nil, state.OK))
+
+--------------------------------------------------------------------------------
 
 print('')
 if failures == 0 then

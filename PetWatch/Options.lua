@@ -169,7 +169,12 @@ local function build()
     api.SetHideMounted(checked)
   end)
 
-  local displayHeading = heading(content, 'Display', widgets.hideMounted, 16)
+  widgets.alert = checkbox(content, 'Flash a warning in the middle of the screen',
+    widgets.hideMounted, 4, function(checked)
+      api.SetAlert(checked)
+    end)
+
+  local displayHeading = heading(content, 'Display', widgets.alert, 16)
   description(content, 'What the indicator shows.', displayHeading, 2)
 
   widgets.display = radioRow(content, {
@@ -333,6 +338,7 @@ function options.Refresh()
 
   widgets.enabled:SetChecked(settings.enabled)
   widgets.hideMounted:SetChecked(settings.hideMounted)
+  widgets.alert:SetChecked(settings.alert)
   widgets.display.Select(settings.displayMode)
   widgets.preview.Select(settings.preview)
   widgets.scale:SetValue(settings.scale)

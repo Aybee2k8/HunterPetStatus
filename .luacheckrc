@@ -18,6 +18,7 @@ read_globals = {
   'HasPetUI',
   'IsMounted',
   'InCombatLockdown',
+  'GetTime',
   'UnitHealth',
   'UnitHealthMax',
   'UnitHealthPercent',

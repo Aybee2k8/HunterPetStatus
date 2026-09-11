@@ -7,6 +7,18 @@ upload's changelog field.
 Versions match the `## Version` line in `PetWatch/PetWatch.toc`; the release
 workflow refuses a tag that disagrees with it.
 
+## 0.2.0 — unreleased
+
+- **Centre-screen alert.** A large "Pet Missing!" or "Pet Dead!" flashes above
+  the middle of the screen and fades, so a pet lost mid-fight is not something
+  you find out about two minutes later. On by default; turn it off in the
+  settings panel or with `/pw alert off`.
+- The alert fires only on a change into that state, never repeatedly while it
+  lasts, and is held back for five seconds after a loading screen — during a
+  zone the pet unit can briefly read as absent even when the pet is out.
+- Previewing a state now shows the alert too, so it can be seen without waiting
+  for something to go wrong.
+
 ## 0.1.0 — unreleased
 
 First release.
