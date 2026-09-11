@@ -13,7 +13,7 @@ local _, ns = ...
 --     on one raises a Lua error. Any unit query can hand us one, so none of
 --     them are called directly.
 --
--- Everything probed here is recorded, and /hps diag prints the record. That
+-- Everything probed here is recorded, and /pw diag prints the record. That
 -- report is the fastest way to find out what a new build actually changed.
 
 local compat = {}
@@ -151,7 +151,7 @@ function compat.InCombatLockdown()
   return compat.SafeFlag(_G.InCombatLockdown)
 end
 
--- Records the state of APIs we depend on but do not wrap, so /hps diag covers
+-- Records the state of APIs we depend on but do not wrap, so /pw diag covers
 -- them too.
 function compat.ProbeOptional()
   probe('HasPetUI', _G.HasPetUI)

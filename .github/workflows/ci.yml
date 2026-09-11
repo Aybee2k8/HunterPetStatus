@@ -29,4 +29,6 @@ jobs:
         run: luacheck .
 
       - name: Tests
-        run: lua5.4 tests/state_spec.lua
+        run: |
+          lua5.4 tests/state_spec.lua
+          lua5.4 tests/options_spec.lua

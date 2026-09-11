@@ -4,19 +4,25 @@ Notes for anyone working on this addon.
 
 ## What this is
 
-A WoW Retail addon for Midnight (12.x). The repository root *is* the addon
-folder — `HunterPetStatus.toc` sits at the top level and lists the Lua files in
-load order.
+A WoW Retail addon for Midnight (12.x), called **PetWatch**. The repository root
+*is* the addon folder — `PetWatch.toc` sits at the top level and lists the Lua
+files in load order.
+
+The repository may still be named after its predecessor. That is cosmetic:
+`package-as: PetWatch` in `.pkgmeta` decides the packaged folder name. Nothing
+in the code should refer to the old name.
 
 ## Before pushing
 
 ```sh
 lua5.4 tests/state_spec.lua
+lua5.4 tests/options_spec.lua
 luacheck .
 ```
 
-Both run in CI. `luacheck` is configured to fail on warnings, so add new WoW
-globals to `read_globals` in `.luacheckrc` rather than leaving them undeclared.
+All three run in CI. `luacheck` is configured to fail on warnings, so add new
+WoW globals to `read_globals` in `.luacheckrc` (or `globals`, if the addon
+writes to them) rather than leaving them undeclared.
 
 ## Rules specific to this addon
 
@@ -26,8 +32,8 @@ globals to `read_globals` in `.luacheckrc` rather than leaving them undeclared.
   `true` / `false` / `nil`, and `nil` means "unreadable" — never treat it as
   `false`.
 
-- **Keep `State.lua` free of frames and globals.** It is the only file the test
-  harness can load, and that is only true while it depends on nothing but
+- **Keep `State.lua` free of frames and globals.** It is the only logic file the
+  test harness can load, and that is only true while it depends on nothing but
   `Compat.lua`. Logic added elsewhere is logic that cannot be tested.
 
 - **Bound any new state memory.** `sawPetDie` exists because a dead pet can stop
@@ -39,14 +45,26 @@ globals to `read_globals` in `.luacheckrc` rather than leaving them undeclared.
   unknown event names at load time; one renamed event would otherwise stop the
   whole addon from loading.
 
-- **Add new API dependencies to `compat.ProbeOptional`** so `/hps diag` reports
+- **Route every setting change through the `settings` table in `Core.lua`.** The
+  panel and the slash commands share it. A change written directly to the saved
+  variables from one of them will silently drift from the other.
+
+- **Do not introduce named Blizzard templates into `Options.lua`** beyond the
+  few already there (`UICheckButtonTemplate`, `UIPanelButtonTemplate`,
+  `UIPanelCloseButton`, `BackdropTemplate`). Template names and their child
+  layouts churn between expansions, and a missing one is a hard error at
+  construction time. Build from primitives and own the widget's parts —
+  especially label FontStrings, which the templates expose differently across
+  versions.
+
+- **Add new API dependencies to `compat.ProbeOptional`** so `/pw diag` reports
   them. That command is the first thing to run after a patch.
 
 ## Bumping for a new patch
 
-Update `## Interface:` in `HunterPetStatus.toc` to the new build's interface
-number (`/dump select(4, GetBuildInfo())` in game). Run `/hps diag` before
-assuming anything else needs changing.
+Update `## Interface:` in `PetWatch.toc` to the new build's interface number
+(`/dump select(4, GetBuildInfo())` in game). Run `/pw diag` before assuming
+anything else needs changing.
 
 ## Branch workflow
 
