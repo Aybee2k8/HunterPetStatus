@@ -187,4 +187,36 @@ function compat.ProbeOptional()
   -- for this addon, and it can only be answered on a live client.
   probe('UnitExists("pet") readable', compat.SafeFlag(_G.UnitExists, 'pet') ~= nil)
   probe('UnitIsDeadOrGhost("pet") readable', compat.SafeFlag(_G.UnitIsDeadOrGhost, 'pet') ~= nil)
+
+  probe('UnitHealth', _G.UnitHealth)
+  probe('UnitHealthMax', _G.UnitHealthMax)
+  probe('UnitHealthPercent', _G.UnitHealthPercent)
+
+  -- Whether a "pet is hurt" indicator is possible at all.
+  --
+  -- Showing one means deciding that health is below some threshold, and
+  -- comparing is precisely what tainted code may not do to a secret value --
+  -- pet health is the headline example of what 12.0 made secret. If this probe
+  -- says no, the feature cannot be built this way, however much it is wanted.
+  probe('pet health comparable (a "hurt" state needs this)', compat.HealthComparable())
+end
+
+-- Attempts the comparison a health threshold would require. True only if the
+-- client let it through.
+function compat.HealthComparable()
+  if type(_G.UnitHealth) ~= 'function' or type(_G.UnitHealthMax) ~= 'function' then
+    return false
+  end
+
+  local ok, result = pcall(function()
+    local current, maximum = _G.UnitHealth('pet'), _G.UnitHealthMax('pet')
+    if not maximum or maximum == 0 then
+      return false
+    end
+    return (current / maximum) < 0.7
+  end)
+
+  -- A false result still means the comparison was allowed; only an error means
+  -- the value was secret.
+  return ok and type(result) == 'boolean'
 end

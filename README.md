@@ -23,26 +23,36 @@ anything — `/console scriptErrors 1`, then restart the game.
 Runs on live (12.1.0, interface 120100), on a Beast Mastery hunter, with the
 settings panel registering into the client's own options UI.
 
-Confirmed there, with a **living** pet, solo:
+**Death detection works.** Observed solo, with a pet that actually died:
+
+```
+resolved state: dead
+pet: exists=true dead=true hunterPetUI=true
+```
+
+Also confirmed there:
 
 - `UnitIsDeadOrGhost("pet")` is readable — it does not come back as a
-  [secret value][secrets]. Reading the pet's condition directly is viable, so
-  death detection does not have to become purely event-driven.
-- `HasPetUI` still exists.
+  [secret value][secrets], alive or dead.
+- **A dead pet keeps answering to the `pet` unit token.** `UnitExists` stays
+  true. The predecessor addon asserted the opposite and built its detection
+  around it; that assertion does not hold on 12.1.0.
+- `HasPetUI` still exists, and reports true for a pet that is dead — so trusting
+  it to mean "the pet is fine" would be wrong. It is only ever used here as
+  evidence that *something* is still there.
 - `GetSpecialization` still exists as a global, alongside
   `C_SpecializationInfo.GetSpecialization`.
 - Every event the addon registers is accepted.
 
-Still unconfirmed, and the reason this is not called finished:
+Still unconfirmed:
 
-1. **The dead-pet path has never run.** Whether `UnitExists("pet")` stays true
-   once the pet is dead is the question the whole death-memory design exists to
-   answer, and a living pet cannot answer it. `/pw diag` prints
-   `pet: exists=… dead=… hunterPetUI=…` for exactly this.
-2. **Secret values are context-dependent.** A quiet solo test is the weakest
-   possible probe. Whether these queries stay readable in combat, in a raid, or
-   in a Mythic+ is untested — which is why every one of them still goes through
-   `compat.SafeFlag`.
+1. **Secret values are context-dependent.** Every reading so far has been solo
+   and out of combat, which is the weakest possible probe. Whether these queries
+   stay readable in a raid or a Mythic+ is untested — which is why every one of
+   them still goes through `compat.SafeFlag`.
+2. **The despawn fallback has never been exercised**, because the case it exists
+   for has not occurred. It is kept as a fallback rather than removed: one
+   reading on one build, with one pet, does not prove the case never happens.
 
 ## Install
 
@@ -117,13 +127,18 @@ never treated as `false`: the difference between "no pet" and "cannot tell" is
 the whole point, and an unreadable query holds the previous state rather than
 collapsing to a wrong one.
 
-**Bounded death memory.** A dead pet can stop answering to the `pet` unit token,
-which makes it indistinguishable from having no pet — but the two need different
-advice, revive vs. call. So the addon remembers having seen the pet die. That
-memory is cleared by every event meaning the pet roster changed (`UNIT_PET`,
-zoning, spec change). The addon this replaces latched on it and never cleared
-it, so once a pet had died the indicator stayed stuck on "Pet dead" for the rest
-of the session; `tests/state_spec.lua` covers that case directly.
+**Bounded death memory.** If a dead pet stopped answering to the `pet` unit
+token it would be indistinguishable from having no pet — and the two need
+different advice, revive vs. call. So the addon remembers having seen the pet
+die, and clears that memory on every event meaning the pet roster changed
+(`UNIT_PET`, zoning, spec change).
+
+That fallback has never actually been needed: on 12.1.0 a dead pet keeps
+answering, and the observed path is the plain `exists → dead` one. It stays in
+as a fallback, not as load-bearing design — one reading on one build does not
+prove the case never occurs. The addon this replaces latched on the same idea
+and never cleared it, so once a pet had died its indicator stayed stuck for the
+rest of the session; `tests/state_spec.lua` covers that directly.
 
 **Isolated event registration.** `RegisterEvent` throws on an unknown event name,
 and those calls happen at load time — one renamed event would stop the whole
