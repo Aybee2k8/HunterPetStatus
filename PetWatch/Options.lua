@@ -152,7 +152,7 @@ end
 
 local function build()
   content = CreateFrame('Frame', nil, UIParent)
-  content:SetSize(PANEL_WIDTH, 360)
+  content:SetSize(PANEL_WIDTH, 470)
   content:Hide()
 
   local title = content:CreateFontString(nil, 'ARTWORK', 'GameFontNormalLarge')
@@ -187,10 +187,36 @@ local function build()
     api.SetScale(value)
   end)
 
+  local previewHeading = heading(content, 'Preview', widgets.scale, 26)
+  description(content,
+    'Shows the indicator without waiting for the pet to die. Closes this panel '
+    .. 'so you can see it. Not saved -- it ends when you zone or reload.',
+    previewHeading, 2)
+
+  widgets.preview = radioRow(content, {
+    { value = 'dead', label = 'Dead' },
+    { value = 'missing', label = 'Missing' },
+    { value = 'off', label = 'Off' },
+  }, previewHeading, 34, function(mode)
+    api.SetPreview(mode)
+    options.Refresh()
+
+    -- Nothing to look at while the panel is covering it.
+    if mode ~= 'off' then
+      options.Close()
+    end
+  end)
+
   widgets.move = actionButton(content, 'Move indicator', 130,
-    widgets.scale, 'TOPLEFT', 'BOTTOMLEFT', 0, -28, function()
+    widgets.preview.buttons.dead, 'TOPLEFT', 'BOTTOMLEFT', 0, -22, function()
       api.ToggleUnlocked()
       options.Refresh()
+
+      -- Unlocking turns the preview on, so there is something to drag; the
+      -- panel has to get out of the way for that to be usable.
+      if api.Snapshot().unlocked then
+        options.Close()
+      end
     end)
 
   actionButton(content, 'Reset to defaults', 130,
@@ -245,7 +271,7 @@ end
 -- Standalone window, used when the client has no settings UI to register with.
 local function buildWindow()
   window = CreateFrame('Frame', 'PetWatchOptionsFrame', UIParent, 'BackdropTemplate')
-  window:SetSize(PANEL_WIDTH, 380)
+  window:SetSize(PANEL_WIDTH, 490)
   window:SetPoint('CENTER')
   window:SetFrameStrata('DIALOG')
   window:SetMovable(true)
@@ -308,9 +334,33 @@ function options.Refresh()
   widgets.enabled:SetChecked(settings.enabled)
   widgets.hideMounted:SetChecked(settings.hideMounted)
   widgets.display.Select(settings.displayMode)
+  widgets.preview.Select(settings.preview)
   widgets.scale:SetValue(settings.scale)
   widgets.scale.valueText:SetText(('%.2f'):format(settings.scale))
   widgets.move:SetText(settings.unlocked and 'Lock indicator' or 'Move indicator')
+end
+
+-- Closes the panel, wherever it ended up living.
+--
+-- Needed because the panel covers the screen: previewing the indicator or
+-- moving it is pointless while the thing you are looking at is hidden behind
+-- the settings UI.
+function options.Close()
+  if window then
+    window:Hide()
+    return true
+  end
+
+  local panel = _G.SettingsPanel
+  if not panel then
+    return false
+  end
+
+  if _G.HideUIPanel and pcall(_G.HideUIPanel, panel) then
+    return true
+  end
+
+  return pcall(panel.Hide, panel)
 end
 
 -- Opens the panel, wherever it ended up living.
