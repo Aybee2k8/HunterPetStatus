@@ -1,6 +1,8 @@
 # Contributing
 
-Notes for anyone working on this addon.
+Notes for anyone working on this addon — what the code assumes, what a live
+client has actually confirmed, and the mistakes already made so they are not
+repeated.
 
 ## What this is
 
