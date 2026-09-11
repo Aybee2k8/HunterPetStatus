@@ -93,13 +93,12 @@ end
 function display.SetUnlocked(unlocked, onMoved)
   frame:EnableMouse(unlocked)
 
+  -- Visibility is not decided here. Unlocking only adds the drag affordance;
+  -- what the indicator shows -- including having something to drag at all --
+  -- comes from the preview state Core drives through Update.
   if unlocked then
     frame:SetBackdrop({ bgFile = 'Interface\\Buttons\\WHITE8x8' })
     frame:SetBackdropColor(0, 0, 0, 0.35)
-    -- Nothing to drag while the state is clean, so force it visible.
-    texture:SetTexture(ICON_MISSING)
-    layout('icon')
-    frame:Show()
   else
     frame:SetBackdrop(nil)
   end

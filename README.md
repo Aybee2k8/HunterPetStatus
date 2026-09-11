@@ -20,14 +20,29 @@ anything — `/console scriptErrors 1`, then restart the game.
 
 ## Status
 
-The logic is written and unit-tested, but **it has not yet run in the game.**
-Two things still need confirming on a live client, and `/pw diag` reports both:
+Runs on live (12.1.0, interface 120100), on a Beast Mastery hunter, with the
+settings panel registering into the client's own options UI.
 
-1. Whether `UnitIsDeadOrGhost("pet")` returns a [secret value][secrets] in 12.x.
-   If it does, the pet's condition cannot be read directly and death detection
-   has to be driven purely by events instead.
-2. Whether `HasPetUI` is still present, and whether it still lingers after a pet
-   dies. It is used here only as a tiebreaker, never as proof the pet is alive.
+Confirmed there, with a **living** pet, solo:
+
+- `UnitIsDeadOrGhost("pet")` is readable — it does not come back as a
+  [secret value][secrets]. Reading the pet's condition directly is viable, so
+  death detection does not have to become purely event-driven.
+- `HasPetUI` still exists.
+- `GetSpecialization` still exists as a global, alongside
+  `C_SpecializationInfo.GetSpecialization`.
+- Every event the addon registers is accepted.
+
+Still unconfirmed, and the reason this is not called finished:
+
+1. **The dead-pet path has never run.** Whether `UnitExists("pet")` stays true
+   once the pet is dead is the question the whole death-memory design exists to
+   answer, and a living pet cannot answer it. `/pw diag` prints
+   `pet: exists=… dead=… hunterPetUI=…` for exactly this.
+2. **Secret values are context-dependent.** A quiet solo test is the weakest
+   possible probe. Whether these queries stay readable in combat, in a raid, or
+   in a Mythic+ is untested — which is why every one of them still goes through
+   `compat.SafeFlag`.
 
 ## Install
 
@@ -63,6 +78,7 @@ The slash commands remain as shortcuts:
 | Command | Effect |
 | --- | --- |
 | `/pw` | Open the settings panel |
+| `/pw preview dead\|missing\|off` | Show the indicator without waiting for a dead pet (`/pw test` also works) |
 | `/pw unlock` / `/pw lock` | Reposition the indicator by dragging |
 | `/pw scale 1.0` | Resize it (0.3 – 4.0) |
 | `/pw display icon\|text\|both` | Choose what is shown |
@@ -127,6 +143,13 @@ error at construction — which for a settings panel would take the addon down
 with it. The panel registers with the client's settings UI when that API is
 available and falls back to its own window when it is not; both hosts show the
 same content frame.
+
+**Preview, because working looks like broken.** A healthy pet means the
+indicator is hidden — which is indistinguishable from an addon that does not
+work, and leaves no way to position it. Preview forces a state, and closes the
+panel when it does, since the panel covers the thing you asked to look at.
+Unlocking turns it on for the same reason: there would otherwise be nothing to
+drag. It is never saved, and ends on zone or reload.
 
 **No bundled font.** The addon this replaces shipped `Expressway.ttf` with no
 accompanying licence. This uses the game's own fonts.

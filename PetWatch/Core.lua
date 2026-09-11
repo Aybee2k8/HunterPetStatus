@@ -63,6 +63,16 @@ end
 
 local refreshBroken = false
 
+-- Forces the indicator to show a given state regardless of the pet.
+--
+-- Without this there is no way to see the indicator, or place it, unless the
+-- pet happens to be dead -- and a working addon shows nothing at all, which is
+-- indistinguishable from a broken one. Deliberately not saved: it is a look at
+-- something, not a setting, and nobody should find a fake indicator waiting for
+-- them after a relog.
+local preview
+local previewFromUnlock = false
+
 local function refresh()
   if refreshBroken then
     return
@@ -70,7 +80,7 @@ local function refresh()
 
   local err = guard(function()
     current = state.Resolve(db, current)
-    display.Update(current, db.displayMode)
+    display.Update(preview or current, db.displayMode)
   end)
 
   if not err then
@@ -155,13 +165,43 @@ function settings.SetScale(value)
   display.ApplyScale(value)
 end
 
+local PREVIEW_STATES = {
+  dead = state.DEAD,
+  missing = state.MISSING,
+  off = false,
+}
+
+-- mode is 'dead', 'missing' or 'off'.
+function settings.SetPreview(mode)
+  local resolved = PREVIEW_STATES[mode]
+  if resolved == nil then
+    return false
+  end
+
+  preview = resolved or nil
+  previewFromUnlock = false
+  refresh()
+  return true
+end
+
 function settings.SetUnlocked(value)
   unlocked = value and true or false
   display.SetUnlocked(unlocked, onMoved)
 
-  if not unlocked then
-    refresh()
+  -- Unlocking with a live pet would otherwise offer nothing to drag, so it
+  -- turns the preview on -- and takes it away again on lock, but only if it was
+  -- the one that turned it on.
+  if unlocked then
+    if not preview then
+      preview = state.MISSING
+      previewFromUnlock = true
+    end
+  elseif previewFromUnlock then
+    preview = nil
+    previewFromUnlock = false
   end
+
+  refresh()
 end
 
 function settings.ToggleUnlocked()
@@ -174,6 +214,9 @@ function settings.Reset()
   db.displayMode = DEFAULTS.displayMode
   db.hideMounted = DEFAULTS.hideMounted
   db.enabled = DEFAULTS.enabled
+
+  preview = nil
+  previewFromUnlock = false
 
   settings.SetUnlocked(false)
   display.ApplyScale(db.scale)
@@ -189,6 +232,9 @@ function settings.Snapshot()
     displayMode = db.displayMode,
     scale = db.scale,
     unlocked = unlocked,
+    preview = (preview == state.DEAD and 'dead')
+      or (preview == state.MISSING and 'missing')
+      or 'off',
   }
 end
 
@@ -198,15 +244,29 @@ end
 function settings.Diagnostics()
   local version, build = GetBuildInfo(), select(4, GetBuildInfo())
 
+  -- GetAddOnMetadata only exposes Author, Version and X-* fields; Interface is
+  -- not among them, so there is no way to read back what the TOC declared. The
+  -- addon list already marks a mismatch, and the client's own number is here.
+  local addonVersion = '?'
+  if C_AddOns and C_AddOns.GetAddOnMetadata then
+    addonVersion = C_AddOns.GetAddOnMetadata(ADDON, 'Version') or '?'
+  end
+
   say('diagnostics')
-  print(('  build: %s (%s)'):format(version, build))
+  print(('  addon: %s'):format(addonVersion))
+  print(('  build: %s (interface %s)'):format(version, build))
   print(('  spec ID: %s'):format(tostring(compat.GetSpecID())))
-  print(('  resolved state: %s'):format(current))
+  print(('  resolved state: %s%s'):format(current, preview and (' (preview: ' .. preview .. ')') or ''))
   print(('  saw pet die: %s'):format(tostring(state.SawPetDie())))
   print(('  settings host: %s'):format(inSettingsUI and 'client settings UI' or 'standalone window'))
-  print(('  interface: %s (addon declares %s)'):format(
-    tostring(select(4, GetBuildInfo())),
-    tostring(C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, 'Interface') or '?')))
+
+  -- The values themselves, not just whether they were readable. Whether the pet
+  -- unit keeps answering once the pet is dead is the one thing the harnesses
+  -- cannot settle, and this is the line that answers it.
+  print(('  pet: exists=%s dead=%s hunterPetUI=%s'):format(
+    tostring(compat.SafeFlag(_G.UnitExists, 'pet')),
+    tostring(compat.SafeFlag(_G.UnitIsDeadOrGhost, 'pet')),
+    tostring(compat.HunterPetUI())))
 
   for _, part in ipairs({ 'display', 'options', 'refresh' }) do
     if setupError[part] then
@@ -288,6 +348,15 @@ listener:SetScript('OnEvent', function(_, event, arg1)
     state.Invalidate()
   end
 
+  -- A preview is a look at something, not a setting. Zoning or reloading ends
+  -- it, so nobody is left staring at a fake indicator wondering why their pet
+  -- is reported dead.
+  if event == 'PLAYER_ENTERING_WORLD' then
+    preview = nil
+    previewFromUnlock = false
+    settings.SetUnlocked(false)
+  end
+
   refresh()
 end)
 
@@ -309,6 +378,20 @@ end
 -- way in; a bare /pw opens it.
 
 local commands = {}
+
+function commands.preview(argument)
+  if not settings.SetPreview(argument) then
+    say(('preview is %s. usage: /pw preview dead|missing|off'):format(settings.Snapshot().preview))
+    return
+  end
+
+  refreshPanel()
+  say(argument == 'off' and 'preview off - showing the real pet state.'
+    or ('previewing "%s" - /pw preview off to stop.'):format(argument))
+end
+
+-- "test" is what people reach for; keep it as an alias rather than a surprise.
+commands.test = commands.preview
 
 function commands.unlock()
   settings.SetUnlocked(true)
@@ -382,6 +465,7 @@ end
 function commands.help()
   say('commands')
   print('  /pw                        - open the settings panel')
+  print('  /pw preview dead|missing|off - show the indicator without waiting for a dead pet')
   print('  /pw unlock | lock          - reposition the indicator')
   print('  /pw scale 1.0              - resize it')
   print('  /pw display icon|text|both - what to show')
