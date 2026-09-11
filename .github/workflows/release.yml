@@ -15,6 +15,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The TOC carries a literal version rather than the packager's
+      # @project-version@ placeholder, so that a clone install shows a real
+      # number. That can drift from the tag; this refuses the release if it has.
+      - name: Tag matches the TOC version
+        run: |
+          toc="$(sed -n 's/^## Version: //p' PetWatch/PetWatch.toc | tr -d '\r')"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$toc" != "$tag" ]; then
+            echo "PetWatch.toc says '$toc' but the tag says '$tag'." >&2
+            exit 1
+          fi
+          echo "version $toc"
+
       # Uploads to CurseForge and Wago only if the matching secret is set, so
       # this workflow is useful for building a zip before either is configured.
       - name: Package
