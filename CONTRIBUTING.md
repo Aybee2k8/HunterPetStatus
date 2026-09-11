@@ -32,25 +32,40 @@ writes to them) rather than leaving them undeclared.
 
 ## What a live client has actually confirmed
 
-Measured on 12.1.0 (interface 120100), Beast Mastery, solo, **living pet**:
+Measured on 12.1.0 (interface 120100), Beast Mastery, solo, with a **living**
+and then an actually **dead** pet:
 
 | | |
 | --- | --- |
-| `UnitIsDeadOrGhost("pet")` | readable, not a secret value |
-| `HasPetUI` | present |
+| `UnitExists("pet")` with a dead pet | **true** — the token keeps answering |
+| `UnitIsDeadOrGhost("pet")` | readable either way, not a secret value |
+| `HasPetUI` | present, and **true for a dead pet** |
 | `GetSpecialization` (global) | still present, alongside `C_SpecializationInfo` |
 | Every registered event | accepted |
+| Detection end to end | `resolved state: dead` — it works |
 
-Two corrections to earlier assumptions, recorded so they are not repeated:
-`GetSpecialization` was **not** removed in 12.0, and the predecessor addon's
-`## Interface: 120000, 120100` was **not** out of date — 120100 is live. Both
-claims came from search summaries rather than a primary source.
+Three corrections to earlier assumptions, recorded so they are not repeated:
 
-What is still unmeasured: the dead-pet path (does `UnitExists("pet")` stay true
-once the pet dies?), and whether any of these stay readable in combat, raids or
-Mythic+. Secret values are context-dependent, so a solo reading proves very
-little. This is why `compat.SafeFlag` stays on every unit query regardless of
-the table above.
+1. `GetSpecialization` was **not** removed in 12.0.
+2. The predecessor addon's `## Interface: 120000, 120100` was **not** out of
+   date — 120100 is live.
+3. **A dead pet does not stop answering to the `pet` token.** The predecessor
+   asserted it does and built its detection on that; the measurement above says
+   otherwise. Do not restate it as fact.
+
+The first two came from search summaries rather than a primary source. The third
+came from trusting the predecessor's own comment.
+
+Consequence for `State.lua`: the despawn fallback (`sawPetDie`, and the
+`HasPetUI` tiebreaker under it) is not the load-bearing path — the plain
+`exists → dead` branch is. Keep the fallback anyway; one reading on one build
+with one pet does not prove the case never occurs. But do not describe the file
+as being shaped by it.
+
+Still unmeasured: whether any of these stay readable in combat, raids or
+Mythic+. Secret values are context-dependent, so a solo reading proves little.
+This is why `compat.SafeFlag` stays on every unit query regardless of the table
+above.
 
 ## Rules specific to this addon
 
