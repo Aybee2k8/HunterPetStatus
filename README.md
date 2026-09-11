@@ -20,14 +20,29 @@ anything — `/console scriptErrors 1`, then restart the game.
 
 ## Status
 
-The logic is written and unit-tested, but **it has not yet run in the game.**
-Two things still need confirming on a live client, and `/pw diag` reports both:
+Runs on live (12.1.0, interface 120100), on a Beast Mastery hunter, with the
+settings panel registering into the client's own options UI.
 
-1. Whether `UnitIsDeadOrGhost("pet")` returns a [secret value][secrets] in 12.x.
-   If it does, the pet's condition cannot be read directly and death detection
-   has to be driven purely by events instead.
-2. Whether `HasPetUI` is still present, and whether it still lingers after a pet
-   dies. It is used here only as a tiebreaker, never as proof the pet is alive.
+Confirmed there, with a **living** pet, solo:
+
+- `UnitIsDeadOrGhost("pet")` is readable — it does not come back as a
+  [secret value][secrets]. Reading the pet's condition directly is viable, so
+  death detection does not have to become purely event-driven.
+- `HasPetUI` still exists.
+- `GetSpecialization` still exists as a global, alongside
+  `C_SpecializationInfo.GetSpecialization`.
+- Every event the addon registers is accepted.
+
+Still unconfirmed, and the reason this is not called finished:
+
+1. **The dead-pet path has never run.** Whether `UnitExists("pet")` stays true
+   once the pet is dead is the question the whole death-memory design exists to
+   answer, and a living pet cannot answer it. `/pw diag` prints
+   `pet: exists=… dead=… hunterPetUI=…` for exactly this.
+2. **Secret values are context-dependent.** A quiet solo test is the weakest
+   possible probe. Whether these queries stay readable in combat, in a raid, or
+   in a Mythic+ is untested — which is why every one of them still goes through
+   `compat.SafeFlag`.
 
 ## Install
 

@@ -57,29 +57,9 @@ local function hasPetSpec()
   return PET_SPECS[specID] == true
 end
 
--- Whether the client still considers a hunter pet active, even if the "pet"
--- unit token has stopped answering.
---
--- This is deliberately only a tiebreaker. HasPetUI is known to linger after a
--- pet dies on some builds, so it is trusted to say "something is still there"
--- and never to say "the pet is fine".
-local function petUIActive()
-  if type(_G.HasPetUI) ~= 'function' then
-    return false
-  end
-
-  local ok, hasUI, isHunterPet = pcall(_G.HasPetUI)
-  if not ok then
-    return false
-  end
-
-  local usable
-  ok, usable = pcall(function()
-    return (hasUI and isHunterPet) and true or false
-  end)
-
-  return ok and usable or false
-end
+-- The pet UI is only ever a tiebreaker here: it is known to linger after a pet
+-- dies on some builds, so it is trusted to say "something is still there" and
+-- never to say "the pet is fine".
 
 -- Resolves the current pet state.
 --
@@ -128,7 +108,7 @@ function state.Resolve(db, previous)
 
   -- No pet unit. Either it died and stopped answering, or there genuinely
   -- isn't one.
-  if sawPetDie or petUIActive() then
+  if sawPetDie or compat.HunterPetUI() then
     return state.DEAD
   end
 
