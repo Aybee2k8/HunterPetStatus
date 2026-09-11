@@ -1,4 +1,7 @@
-## Interface: 120105
+# 120100 is live Mainline; 120105 is Mainline Test (the PTR). Both are listed so
+# the addon loads on either without a second TOC -- comma-delimited interface
+# versions have been supported since 10.2.7.
+## Interface: 120100, 120105
 ## Title: PetWatch
 ## Notes: Shows an indicator when your hunter pet is missing or dead.
 ## Notes-deDE: Zeigt eine Anzeige, wenn dein Jägerbegleiter fehlt oder tot ist.
@@ -6,8 +9,11 @@
 ## Version: @project-version@
 ## SavedVariables: PetWatchDB
 ## IconTexture: Interface\Icons\Ability_Hunter_BeastTaming
-## Category-enUS: Combat
+# The unlocalized fallback goes first: later entries overwrite earlier ones, so
+# a locale with no entry of its own still lands in a sensible category.
+## Category: Combat
 ## Category-deDE: Kampf
+## AddonCompartmentFunc: PetWatch_OnAddonCompartmentClick
 
 Compat.lua
 State.lua
