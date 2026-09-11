@@ -152,41 +152,26 @@ functional content. This is the only block that links out, so keep it last.
 
 ## Accuracy
 
-Everything above describes behaviour the addon implements. One claim is **not**
-yet backed by observation, and it is the central one:
+Everything above describes behaviour the addon implements, and the central claim
+is now backed by observation.
 
-**The dead-pet path has never been seen working in the game.** Every live test so
-far ran with a healthy pet. Whether `UnitExists("pet")` keeps answering once the
-pet is dead — the thing the whole detection design turns on — is still unverified,
-and the preview mode does not test it, because it bypasses detection rather than
-exercising it.
+**Pet-death detection has been seen working on a live client** (12.1.0, Beast
+Mastery, solo), with a pet that actually died:
 
-Until a `/pw diag` taken with an actually dead pet confirms it, publishing this
-text means telling strangers the addon does something nobody has watched it do.
+```
+resolved state: dead
+pet: exists=true dead=true hunterPetUI=true
+```
 
-Two honest options:
+The text above can be published as it stands. No beta note is needed for that
+claim.
 
-1. **Verify first**, then publish this text unchanged. One dead pet and one
-   `/pw diag` settles it.
-2. **Publish now with a beta note.** Add this under the summary, and delete it
-   once verified:
-
-   > **Early release.** Pet-death detection has not yet been confirmed on a live
-   > client. If the indicator does not appear when your pet dies, please open an
-   > issue with the output of `/pw diag`.
-
-   German:
-
-   > **Frühe Version.** Die Erkennung eines toten Begleiters ist auf einem Live-
-   > Client noch nicht bestätigt. Falls die Anzeige beim Tod deines Begleiters
-   > ausbleibt, bitte ein Issue mit der Ausgabe von `/pw diag` eröffnen.
-
-A second claim is softer but worth knowing: the indicator is described as working
-in fights, and the API queries behind it have only ever been read solo and out of
-combat. Midnight's secret values are context-dependent, so a raid or Mythic+ may
-behave differently. The addon degrades rather than breaking if so — it holds the
+One softer caveat remains, and it is worth knowing even though it does not
+belong in the store text: every reading so far has been solo and out of combat.
+Midnight's secret values are context-dependent, so a raid or Mythic+ may behave
+differently. If they do, the addon degrades rather than breaks — it holds the
 last known state instead of showing something wrong — but "degrades" is not
-"tested".
+"tested". Worth a line in the changelog once someone has run it in a group.
 
 ---
 

@@ -4,15 +4,22 @@ local compat = ns.compat
 
 -- Pet state resolution.
 --
--- The awkward part of this addon is telling a dead pet apart from a dismissed
--- one. A dead pet can stop answering to the "pet" unit token, which makes it
--- look identical to having no pet at all -- and the two need different advice
--- (revive vs. call).
+-- The normal path is simple, and measured: on 12.1.0 a dead pet keeps answering
+-- to the "pet" unit token, so UnitExists says yes and UnitIsDeadOrGhost says
+-- dead. That is the path a dead pet actually takes.
 --
--- The way through is to remember that we saw the pet die, but to bound that
--- memory strictly: it is cleared by every event that means "the pet situation
--- changed" (UNIT_PET, zoning, spec change). An unbounded latch would stick on
--- DEAD forever, which is worse than being wrong for a moment.
+-- Everything below it exists for the case where the token stops answering,
+-- which would make a dead pet look identical to no pet at all -- and the two
+-- need different advice, revive vs. call. The predecessor addon asserted that
+-- this happens; one live observation says it does not. It is kept as a fallback
+-- rather than removed, because one reading on one build, solo, with one pet is
+-- not enough to prove it never happens -- but it is no longer the reason this
+-- file is shaped the way it is.
+--
+-- The fallback remembers having seen the pet die, and bounds that memory
+-- strictly: it is cleared by every event meaning "the pet situation changed"
+-- (UNIT_PET, zoning, spec change). An unbounded latch sticks on DEAD forever,
+-- which is exactly how the predecessor broke.
 
 local state = {}
 ns.state = state

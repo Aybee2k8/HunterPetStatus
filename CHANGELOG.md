@@ -24,5 +24,6 @@ First release.
   bug report.
 - Built for Midnight; declares interface 120100 (live) and 120105 (PTR).
 
-**Not yet verified:** pet-death detection has never been observed on a live
-client. See the repository README for what has and has not been tested.
+Verified on a live client (12.1.0, Beast Mastery, solo) with a pet that actually
+died. Not yet exercised in a group: Midnight's secret values are
+context-dependent, so raid and Mythic+ behaviour is untested.
