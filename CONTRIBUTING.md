@@ -62,6 +62,31 @@ Consequence for `State.lua`: the despawn fallback (`sawPetDie`, and the
 with one pet does not prove the case never occurs. But do not describe the file
 as being shaped by it.
 
+## Pet health is secret: no "pet is hurt" indicator
+
+Asked for, and investigated. A `/run` test of the comparison such a feature
+needs returns, consistently:
+
+```
+attempt to perform arithmetic on a secret number value
+```
+
+So `UnitHealth("pet")` is a secret value and arithmetic on it is refused. A
+threshold ("show when below 70%") cannot be computed, and the feature cannot be
+built that way. **Do not re-attempt it** without new evidence.
+
+Two caveats on that conclusion, both honest:
+
+- The `/run` path carries `ForceTaint_Strong`, which may be stricter than an
+  addon's own execution. `compat.HealthComparable()` runs the same comparison
+  from inside the addon and reports the result in `/pw diag` — that line is the
+  authoritative answer, and is also a regression detector if Blizzard ever
+  relaxes this.
+- Secrets may still be *passed* to certain native APIs, `StatusBar:SetValue()`
+  among them. So displaying pet health as a bar is likely possible even though
+  deciding anything about it is not. That is a different feature — showing,
+  not alerting — and nobody has asked for it.
+
 Still unmeasured: whether any of these stay readable in combat, raids or
 Mythic+. Secret values are context-dependent, so a solo reading proves little.
 This is why `compat.SafeFlag` stays on every unit query regardless of the table
