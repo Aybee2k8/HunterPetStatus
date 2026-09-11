@@ -4,9 +4,15 @@ Guidance for Claude Code / AI agents working in this repository.
 
 ## What this is
 
-A WoW Retail addon for Midnight (12.x), called **PetWatch**. The repository root
-*is* the addon folder — `PetWatch.toc` sits at the top level and lists the Lua
-files in load order.
+A WoW Retail addon for Midnight (12.x), called **PetWatch**.
+
+The addon lives in `PetWatch/`, not at the repository root, so that a clone or
+ZIP download already contains a correctly named folder to drop into
+`Interface/AddOns`. **The folder name and the `.toc` name must match** — the
+client silently skips a folder whose `.toc` does not share its name, and the
+addon then never appears in the list at all, not even as out of date. CI asserts
+`PetWatch/PetWatch.toc` exists for exactly this reason; do not flatten the
+layout.
 
 The repository may still be named after its predecessor. That is cosmetic:
 `package-as: PetWatch` in `.pkgmeta` decides the packaged folder name. Nothing
@@ -62,7 +68,7 @@ writes to them) rather than leaving them undeclared.
 
 ## Bumping for a new patch
 
-Update `## Interface:` in `PetWatch.toc` to the new build's interface number
+Update `## Interface:` in `PetWatch/PetWatch.toc` to the new build's interface number
 (`/dump select(4, GetBuildInfo())` in game). Run `/pw diag` before assuming
 anything else needs changing.
 

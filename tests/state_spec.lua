@@ -12,12 +12,12 @@
 -- compat.SafeFlag -- but only a live client can confirm which queries actually
 -- hand back secrets.
 
-package.path = './?.lua;' .. package.path
+package.path = './PetWatch/?.lua;' .. package.path
 
 local ns = {}
 
-loadfile('Compat.lua')('PetWatch', ns)
-loadfile('State.lua')('PetWatch', ns)
+loadfile('PetWatch/Compat.lua')('PetWatch', ns)
+loadfile('PetWatch/State.lua')('PetWatch', ns)
 
 local state = ns.state
 
