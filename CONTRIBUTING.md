@@ -159,6 +159,46 @@ number first.
 Run `/pw diag` before assuming anything else needs changing; it prints the
 client's interface version next to the one the addon declares.
 
+## Publishing to CurseForge
+
+The release workflow uploads through CurseForge's upload API, via the BigWigs
+packager, and runs **only on a `v*` tag** — never on a merge to `main`. Two
+things beyond the tag are required, and without either the packager still builds
+the zip and attaches it to the GitHub release but skips the upload *silently*:
+
+- `## X-Curse-Project-ID` in `PetWatch/PetWatch.toc` (and `## X-Wago-ID` for
+  Wago).
+- A `CF_API_KEY` repository secret, from CurseForge's API Tokens page. The
+  workflow sets both `CF_API_KEY` and `CF_API_TOKEN` from it: the packager's
+  README names one, its GitHub Action wiki names the other, and the two
+  disagree.
+
+Bump `## Version` in the TOC before tagging. The workflow refuses a tag that
+disagrees with it, so a version already published cannot be re-uploaded by
+accident.
+
+### Trying a packaging change safely
+
+The `move-folders` mapping in `.pkgmeta` has never been exercised, and it is not
+the shape CurseForge's own documentation shows: their example moves a nested
+folder to a *different* top-level name, while this one moves `PetWatch/PetWatch`
+onto its own parent. It may simply work; nobody has checked.
+
+CurseForge reads the release type from the tag name — one containing `alpha` or
+`beta` is filed in that channel instead of as a release. The version check
+ignores a pre-release suffix for that reason, so `v0.2.0-alpha1` against a TOC of
+`0.2.0` is a complete end-to-end run — same packager, same `.pkgmeta`, same
+upload path — that lands in the alpha channel and leaves the release channel
+alone. Check the resulting zip has `PetWatch/PetWatch.toc` at its root and not
+`PetWatch/PetWatch/PetWatch.toc`, then delete the alpha file and the tag.
+
+### Pick one automation, not two
+
+CurseForge's project settings have their own **Automatic Packaging**, driven by a
+repository webhook, which also builds from tags and reads the same `.pkgmeta`.
+Enabling it alongside this workflow means two builds of the same tag and two
+uploads. If CurseForge's own packaging is turned on, delete this workflow.
+
 ## Branch workflow
 
 One task, one branch off `main`, one topic per PR. Never reuse a merged branch —

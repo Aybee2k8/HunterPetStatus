@@ -32,11 +32,19 @@ jobs:
         run: |
           toc="$(sed -n 's/^## Version: //p' PetWatch/PetWatch.toc | tr -d '\r')"
           tag="${GITHUB_REF_NAME#v}"
-          if [ "$toc" != "$tag" ]; then
-            echo "PetWatch.toc says '$toc' but the tag says '$tag'." >&2
+
+          # A pre-release suffix is allowed and ignored: v0.2.0-alpha1 matches a
+          # TOC of 0.2.0. CurseForge reads the release type from the tag name --
+          # one containing "alpha" or "beta" is filed in that channel rather
+          # than as a release -- so this is how a packaging change gets tried
+          # without disturbing the release channel or churning the version.
+          base="${tag%%-*}"
+
+          if [ "$toc" != "$base" ]; then
+            echo "PetWatch.toc says '$toc' but the tag says '$base'." >&2
             exit 1
           fi
-          echo "version $toc"
+          echo "version $toc (tag $tag)"
 
       # Pinned to the v2 tag rather than master: an action that moves under you
       # turns a release into a debugging session.
