@@ -22,14 +22,16 @@ read_globals = {
   'C_SpecializationInfo',
   'GetSpecialization',
   'GetSpecializationInfo',
+  'Settings',
   'unpack',
 }
 
 -- Globals the addon defines.
 globals = {
-  'HunterPetStatusDB',
-  'SLASH_HUNTERPETSTATUS1',
-  'SLASH_HUNTERPETSTATUS2',
+  'PetWatchDB',
+  'UISpecialFrames',
+  'SLASH_PETWATCH1',
+  'SLASH_PETWATCH2',
   'SlashCmdList',
 }
 
