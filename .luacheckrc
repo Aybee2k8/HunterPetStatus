@@ -23,12 +23,14 @@ read_globals = {
   'GetSpecialization',
   'GetSpecializationInfo',
   'Settings',
+  'C_AddOns',
   'unpack',
 }
 
 -- Globals the addon defines.
 globals = {
   'PetWatchDB',
+  'PetWatch_OnAddonCompartmentClick',
   'UISpecialFrames',
   'SLASH_PETWATCH1',
   'SLASH_PETWATCH2',
