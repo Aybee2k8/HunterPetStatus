@@ -6,6 +6,18 @@ missing or dead.
 Built for Midnight (12.x). Written from scratch — it replaces an abandoned addon
 that stopped working in 12.0, and shares no code with it.
 
+## Troubleshooting
+
+Lua errors are hidden by default in Retail. Turn them on before reporting
+anything — `/console scriptErrors 1`, then restart the game.
+
+| Symptom | Cause |
+| --- | --- |
+| Not in the addon list at all | Folder name does not match the `.toc` inside it. It must be `Interface/AddOns/PetWatch/PetWatch.toc`. Restart the game; `/reload` does not pick up a newly added addon |
+| Listed as incompatible / out of date | The client's interface version is not one the TOC declares. `/dump select(4, GetBuildInfo())` gives the real number; ticking "Load out of date AddOns" loads it meanwhile, unchanged |
+| Loaded, but `/pw` does nothing | Should not happen — the slash command is registered at load. If it does, the addon did not load: check `/dump C_AddOns.IsAddOnLoaded("PetWatch")` |
+| Panel missing, indicator working | The panel failed to build. It says so in chat at login and in `/pw diag`; the slash commands cover everything it does |
+
 ## Status
 
 The logic is written and unit-tested, but **it has not yet run in the game.**
@@ -41,8 +53,8 @@ date.
 
 ## Settings
 
-Type `/pw` to open the settings panel, or find **PetWatch** under
-Game Menu → Options → AddOns. Everything is there: enable, behaviour while
+Type `/pw` to open the settings panel, click **PetWatch** in the minimap's addon
+compartment, or find it under Game Menu → Options → AddOns. Everything is there: enable, behaviour while
 mounted, what the indicator shows, its size, where it sits, and a button that
 reports what the client API supports.
 
